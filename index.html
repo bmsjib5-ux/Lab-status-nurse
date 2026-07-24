@@ -1163,7 +1163,8 @@ const DEFAULT_TIMEOUT = 60000;
 const APP_NAME = 'BMS.Lab.Status';
 
 // เกณฑ์เตือน (นาที) เกินแล้วเด้งแดง — ปรับได้ตามนโยบายคลินิก
-//   nurse/doctor = นับจากเวลามาถึง (vsttime)
+//   nurse (รอซักประวัติ) = นับจากเปิด visit (vsttime) → บันทึก cc
+//   doctor (รอพบแพทย์)   = นับจากบันทึกซักประวัติ (opdscreen.update_datetime) → แพทย์บันทึก diag
 //   lab   = นับจากเวลารับ lab (receive) → รายงานผล
 //   xray  = นับจากเวลารับตัว (accept) → ฉายรังสี
 const SLA_MIN = { nurse: 30, doctor: 60, lab: 60, xray: 30 };
@@ -1222,7 +1223,8 @@ const LABFLAG_SQL = `select v.vn,
   (select count(*) from lab_head h2 join lab_order lo on lo.lab_order_number = h2.lab_order_number
     where h2.vn = v.vn and coalesce(lo.abnormal_result,'N') = 'Y' and trim(coalesce(lo.lab_order_result,'')) <> '') as lab_abn,
   (select count(*) from lab_head h2 join lab_order lo on lo.lab_order_number = h2.lab_order_number
-    where h2.vn = v.vn and coalesce(lo.critical_result,'N') = 'Y' and trim(coalesce(lo.lab_order_result,'')) <> '') as lab_crit
+    where h2.vn = v.vn and coalesce(lo.critical_result,'N') = 'Y' and trim(coalesce(lo.lab_order_result,'')) <> '') as lab_crit,
+  (select max(o.update_datetime) from opdscreen o where o.vn = v.vn and coalesce(o.cc,'') <> '') as screen_at
 from ovst v where :visit_filter`;
 
 // เวลา total (รับ->ผล) ของ Lab/Xray ที่เสร็จ — แยกคิวรี่ (render-only ไม่ใช้ตรวจจับ) กัน URL ยาว
@@ -1428,10 +1430,10 @@ async function openDetail(row) {
   const doctorDone = Number(row.doctor_done || 0) > 0;
   const cOrder = Number(row.cc_order || 0), cReport = Number(row.cc_report || 0);
   const xo = Number(row.xray_order || 0) > 0, xr = Number(row.xray_report || 0) > 0;
-  document.getElementById('detailStat1').innerHTML = badge(nurseDone, nurseDone ? 'ซักแล้ว' : 'รอซัก');
+  document.getElementById('detailStat1').innerHTML = badge(nurseDone, nurseDone ? 'ซักแล้ว' : 'รอซักประวัติ');
   document.getElementById('detailStat2').innerHTML = cOrder === 0 ? '<span class="pill-mini">ไม่มีสั่ง</span>' : badge(cReport >= cOrder, `${cReport}/${cOrder}`);
   document.getElementById('detailStat3').innerHTML = !xo ? '<span class="pill-mini">ไม่มีสั่ง</span>' : badge(xr, xr ? 'มีผล' : 'รอผล');
-  document.getElementById('detailStat4').innerHTML = badge(doctorDone, doctorDone ? 'ตรวจแล้ว' : 'รอตรวจ');
+  document.getElementById('detailStat4').innerHTML = badge(doctorDone, doctorDone ? 'ตรวจแล้ว' : 'รอพบแพทย์');
 
   // Mark selected row
   document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected'));
@@ -1951,7 +1953,7 @@ async function runQuery() {
     r.lab_wait_since = null; r.xray_wait_since = null;
     r.lab_abn = 0; r.lab_crit = 0;
     r.lab_done_recv = null; r.lab_done_rep = null;
-    r.xray_done_start = null; r.xray_done_end = null;
+    r.xray_done_start = null; r.xray_done_end = null; r.screen_at = null;
     r.items = null;   // null = ยังโหลดรายการไม่เสร็จ
   });
 
@@ -2100,7 +2102,7 @@ async function loadLabFlags(visitFilter) {
     const map = new Map((json.data || []).map(c => [String(c.vn), c]));
     lastData.forEach(r => {
       const c = map.get(String(r.vn));
-      if (c) { r.lab_abn = Number(c.lab_abn || 0); r.lab_crit = Number(c.lab_crit || 0); }
+      if (c) { r.lab_abn = Number(c.lab_abn || 0); r.lab_crit = Number(c.lab_crit || 0); r.screen_at = c.screen_at || null; }
     });
     detectAbnormal();
     filterTable();
@@ -2674,6 +2676,8 @@ function renderTable(data) {
     const labItems = Array.isArray(r.items) ? r.items.filter(it => it.kind === 'LAB') : null;
     const labItemTotal = labItems ? labItems.length : 0;
     const labItemDone = labItems ? labItems.filter(it => it.reported).length : 0;
+    // รอพบแพทย์: นับจากเวลาบันทึกซักประวัติ (screen_at) — เริ่มนับเมื่อซักประวัติแล้วเท่านั้น
+    const doctorElapsed = (!doctorDone && nurseDone) ? minutesSinceDatetime(r.screen_at) : null;
     const xrayTotal = (xrayOrder && xrayReport) ? minutesBetween(r.xray_done_start, r.xray_done_end) : null;  // total เมื่อ xray เสร็จ
 
     if (order > 0 && report >= order) totals.labDone++;
@@ -2707,8 +2711,8 @@ function renderTable(data) {
         { cls: '', html: room },
         { cls: 'center' + fl('lab'), html: labStatusCell(order, receive, report, labElapsed, labTotal, labItemDone, labItemTotal) },
         { cls: 'center' + fl('xray'), html: xrayStatusCell(xrayOrder, xrayReport, xrayElapsed, xrayTotal) },
-        { cls: 'center' + fl('nurse'), html: doneCell(nurseDone, 'ซักแล้ว', 'รอซัก', elapsed, SLA_MIN.nurse) },
-        { cls: 'center' + fl('doctor'), html: doneCell(doctorDone, 'ตรวจแล้ว', 'รอตรวจ', elapsed, SLA_MIN.doctor) },
+        { cls: 'center' + fl('nurse'), html: doneCell(nurseDone, 'ซักแล้ว', 'รอซักประวัติ', elapsed, SLA_MIN.nurse) },
+        { cls: 'center' + fl('doctor'), html: doneCell(doctorDone, 'ตรวจแล้ว', 'รอพบแพทย์', doctorElapsed, SLA_MIN.doctor) },
         { cls: 'items-td', html: itemsCell(r.items) },
         { cls: '', html: r.pttype_name ? `<span class="badge pttype">${escHtml(r.pttype_name)}</span>` : '<span class="num-zero">-</span>' },
       ]
@@ -2811,9 +2815,9 @@ function renderSummary(data) {
   const pct = (n, d) => d > 0 ? `${(n / d * 100).toFixed(0)}%` : '-';
   document.getElementById('sumPatient').textContent = total.toLocaleString();
   document.getElementById('sumNurse').textContent = `${nurseDone.toLocaleString()}/${total.toLocaleString()}`;
-  document.getElementById('sumNurseSub').textContent = `${pct(nurseDone, total)} · รอซัก ${(total - nurseDone).toLocaleString()}`;
+  document.getElementById('sumNurseSub').textContent = `${pct(nurseDone, total)} · รอซักประวัติ ${(total - nurseDone).toLocaleString()}`;
   document.getElementById('sumDoctor').textContent = `${doctorDone.toLocaleString()}/${total.toLocaleString()}`;
-  document.getElementById('sumDoctorSub').textContent = `${pct(doctorDone, total)} · รอตรวจ ${(total - doctorDone).toLocaleString()}`;
+  document.getElementById('sumDoctorSub').textContent = `${pct(doctorDone, total)} · รอพบแพทย์ ${(total - doctorDone).toLocaleString()}`;
   document.getElementById('sumLab').textContent = `${labDone.toLocaleString()}/${labWith.toLocaleString()}`;
   document.getElementById('sumLabSub').textContent = labWith > 0 ? `${pct(labDone, labWith)} · รอ ${(labWith - labDone).toLocaleString()}` : 'ไม่มีสั่ง Lab';
   document.getElementById('sumXray').textContent = `${xrayDone.toLocaleString()}/${xrayWith.toLocaleString()}`;
@@ -2841,8 +2845,8 @@ function renderBottleneck(rooms) {
   document.getElementById('bottleneckCount').textContent = `(${arr.length} ห้อง)`;
   list.innerHTML = arr.map(r => {
     const parts = [];
-    if (r.nurse) parts.push(`<span class="bn-k">รอซัก ${r.nurse}</span>`);
-    if (r.doctor) parts.push(`<span class="bn-k">รอตรวจ ${r.doctor}</span>`);
+    if (r.nurse) parts.push(`<span class="bn-k">รอซักประวัติ ${r.nurse}</span>`);
+    if (r.doctor) parts.push(`<span class="bn-k">รอพบแพทย์ ${r.doctor}</span>`);
     if (r.lab) parts.push(`<span class="bn-k">รอผล Lab ${r.lab}</span>`);
     if (r.xray) parts.push(`<span class="bn-k">รอผล X-ray ${r.xray}</span>`);
     return `<div class="bn-chip"><span class="bn-room">${escHtml(r.room)}</span>${parts.join('')}</div>`;
@@ -2871,8 +2875,8 @@ function exportCsv() {
 
     const xrayStatus = !(Number(r.xray_order || 0) > 0) ? 'ไม่มีสั่ง'
       : (Number(r.xray_report || 0) > 0 ? 'ผล X-ray แล้ว' : 'รอผล X-ray');
-    const nurseStatus = Number(r.nurse_done || 0) > 0 ? 'ซักแล้ว' : 'รอซัก';
-    const doctorStatus = Number(r.doctor_done || 0) > 0 ? 'ตรวจแล้ว' : 'รอตรวจ';
+    const nurseStatus = Number(r.nurse_done || 0) > 0 ? 'ซักแล้ว' : 'รอซักประวัติ';
+    const doctorStatus = Number(r.doctor_done || 0) > 0 ? 'ตรวจแล้ว' : 'รอพบแพทย์';
     const itemsStr = (r.items || []).map(it =>
       `${it.kind === 'XRAY' ? '[X]' : ''}${it.name || it.code}(${it.reported ? 'มีผล' : 'รอผล'})`).join('; ');
 
