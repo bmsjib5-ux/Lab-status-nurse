@@ -63,7 +63,7 @@
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 2px 16px rgba(2, 119, 189, 0.08);
-    padding: 0 20px; display: flex; align-items: center; gap: 14px;
+    padding: 0 16px; display: flex; align-items: center; gap: 14px;
     height: 60px; position: sticky; top: 0; z-index: 100;
   }
   .logo-shield {
@@ -237,7 +237,43 @@
   }
 
   /* Layout */
-  .container { padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
+  /* เต็มความกว้างจอ เหลือขอบไว้เล็กน้อย */
+  .container { padding: 14px 16px; max-width: 100%; margin: 0; }
+
+  /* ===== Layout: แถบเมนูซ้าย + เนื้อหา ===== */
+  .layout { display: flex; gap: 14px; align-items: flex-start; }
+  .content { flex: 1; min-width: 0; }   /* min-width:0 ให้ตารางย่อ/scroll ได้ */
+  .sidebar {
+    width: 215px; flex-shrink: 0;
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+    padding: 14px; position: sticky; top: 74px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .side-group { display: flex; flex-direction: column; gap: 4px; }
+  .side-group label {
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .side-group input, .side-group select {
+    width: 100%; background: rgba(255,255,255,0.75);
+    border: 1px solid var(--border); color: var(--text);
+    padding: 8px 10px; border-radius: 8px; font-size: 15px;
+    font-family: inherit; transition: all .15s;
+  }
+  .side-group input:focus, .side-group select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow); background: #fff;
+  }
+  .sidebar .btn { width: 100%; justify-content: center; }
+  /* จอแคบ: พับแถบซ้ายขึ้นไปด้านบน */
+  @media (max-width: 980px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; position: static; }
+  }
 
   /* Glass panel base */
   .glass {
@@ -480,6 +516,16 @@
     color: var(--primary); font-size: 15px; letter-spacing: 0.2px;
   }
   td.pt-cell .pt-hn .ptl { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+  /* คลิก HN เพื่อคัดลอก (ดับเบิลคลิก/ลากเลือกข้อความก็ได้) */
+  td.pt-cell .hn-copy {
+    cursor: copy; user-select: all; -webkit-user-select: all;
+    border-bottom: 1px dotted var(--border-strong); padding: 0 1px; border-radius: 3px;
+    transition: background .12s, color .12s;
+  }
+  td.pt-cell .hn-copy:hover {
+    color: var(--primary-strong); background: rgba(47, 109, 179, 0.14);
+    border-bottom-color: var(--primary);
+  }
   td.pt-cell .pt-qn {
     margin-left: 10px; color: var(--warn); font-weight: 700;
     background: var(--warn-bg); border-radius: 6px; padding: 1px 7px; font-size: 13px;
@@ -955,29 +1001,39 @@
 </div>
 
 <div class="container">
+ <div class="layout">
 
-  <!-- Filters -->
-  <div class="filter-bar">
-    <div class="filter-group">
+  <!-- แถบเมนูซ้าย: กรองวันที่ / ค้นหา / ห้องตรวจ / สิทธิ -->
+  <aside class="sidebar">
+    <div class="side-group">
       <label>วันที่เริ่มต้น (วันที่ Visit)</label>
       <input type="date" id="filterStart" onkeydown="if(event.key==='Enter') runQuery()">
     </div>
-    <div class="filter-group">
+    <div class="side-group">
       <label>วันที่สิ้นสุด</label>
       <input type="date" id="filterEnd" onkeydown="if(event.key==='Enter') runQuery()">
     </div>
-    <div class="filter-group">
-      <label>HN (กรอก)</label>
-      <input type="text" id="filterHn" placeholder="ทั้งหมด" style="min-width:120px;"
-             onkeydown="if(event.key==='Enter'){ normalizeHnInput(); runQuery(); }"
-             onblur="normalizeHnInput()">
+    <div class="side-group">
+      <label>ค้นหา HN / ชื่อ</label>
+      <input type="text" id="tableSearch" placeholder="พิมพ์ HN หรือชื่อ..." oninput="filterTable()">
     </div>
-    <div class="filter-spacer"></div>
+    <div class="side-group">
+      <label>ห้องตรวจ</label>
+      <select id="filterRoom" onchange="filterTable()"><option value="">ทั้งหมด</option></select>
+    </div>
+    <div class="side-group">
+      <label>สิทธิการรักษา</label>
+      <select id="filterPttype" onchange="filterTable()"><option value="">ทั้งหมด</option></select>
+    </div>
     <button class="btn success" id="runBtn" onclick="runQuery()" disabled>
       <span id="runBtnText">โหลดข้อมูล</span>
     </button>
     <button class="btn secondary" onclick="exportCsv()">Export CSV</button>
-  </div>
+    <!-- HN filter ฝั่ง query: ซ่อนไว้ (ใช้ช่องค้นหาด้านบนแทน) -->
+    <input type="hidden" id="filterHn" value="">
+  </aside>
+
+  <main class="content">
 
   <!-- Summary cards (funnel 4 ขั้น) -->
   <div class="cards" id="summaryCards">
@@ -1033,13 +1089,6 @@
         <option value="600">รีเฟรช 10 นาที</option>
         <option value="1800">รีเฟรช 30 นาที</option>
       </select>
-      <select id="filterRoom" class="table-search" onchange="filterTable()" style="min-width:160px;">
-        <option value="">ห้องตรวจ: ทั้งหมด</option>
-      </select>
-      <select id="filterPttype" class="table-search" onchange="filterTable()" style="min-width:160px;">
-        <option value="">สิทธิ: ทั้งหมด</option>
-      </select>
-      <input type="text" class="table-search" id="tableSearch" placeholder="ค้นหา HN / ชื่อ..." oninput="filterTable()">
     </div>
     <div class="table-scroll" id="tableWrap">
       <div class="empty-state">
@@ -1074,6 +1123,8 @@
     </div>
   </div>
 
+  </main>
+ </div>
 </div>
 
 <!-- Slide-out detail panel -->
@@ -2391,7 +2442,7 @@ function populateFilters(data) {
   const select = document.getElementById('filterPttype');
   const prev = select.value;
   const types = Array.from(new Set(data.map(r => r.pttype_name).filter(Boolean))).sort();
-  select.innerHTML = '<option value="">สิทธิ: ทั้งหมด</option>'
+  select.innerHTML = '<option value="">ทั้งหมด</option>'
     + types.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
   if (types.includes(prev)) select.value = prev;
 
@@ -2399,7 +2450,7 @@ function populateFilters(data) {
   const prevRoom = roomSel.value;
   const rooms = Array.from(new Set(data.map(r => r.room_name).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b, 'th'));
-  roomSel.innerHTML = '<option value="">ห้องตรวจ: ทั้งหมด</option>'
+  roomSel.innerHTML = '<option value="">ทั้งหมด</option>'
     + rooms.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
   if (rooms.includes(prevRoom)) roomSel.value = prevRoom;
 }
@@ -2540,6 +2591,25 @@ function rowPending(r) {
   return { lab, xray, nurse, doctor, any: lab || xray || nurse || doctor };
 }
 
+// คลิก HN เพื่อคัดลอก (stopPropagation กันไม่ให้เปิด detail panel)
+function copyHn(ev, hn) {
+  ev.stopPropagation();
+  const txt = String(hn || '').trim();
+  if (!txt) return;
+  const ok = () => showToast('ok', `คัดลอก HN ${txt} แล้ว`);
+  const fallback = () => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      ok();
+    } catch (e) { showToast('err', 'คัดลอกไม่สำเร็จ'); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(ok).catch(fallback);
+  } else fallback();
+}
+
 // คอลัมน์ "รายการ": chip เขียว=รายงานผลแล้ว, แดง=ยังไม่มีผล (Xray = เส้นประ)
 function itemsCell(items) {
   if (!items) return '<span class="num-zero">…</span>';        // ยังโหลดไม่เสร็จ
@@ -2602,7 +2672,7 @@ function renderTable(data) {
       cells: [
         { cls: 'num', html: String(i + 1) },
         { cls: 'num slot-cell', html: slot },
-        { cls: 'pt-cell', html: `<div class="pt-hn"><span class="ptl">HN</span> ${escHtml(r.hn || '')}${qn}</div><div class="pt-name">${escHtml(r.pt_name || '-')}</div>` },
+        { cls: 'pt-cell', html: `<div class="pt-hn"><span class="ptl">HN</span> <span class="hn-copy" title="คลิกเพื่อคัดลอก HN" onclick="copyHn(event,'${String(r.hn || '').replace(/[^0-9A-Za-z]/g, '')}')">${escHtml(r.hn || '')}</span>${qn}</div><div class="pt-name">${escHtml(r.pt_name || '-')}</div>` },
         { cls: '', html: room },
         { cls: 'center' + fl('lab'), html: labStatusCell(order, receive, report, labElapsed, labTotal) },
         { cls: 'center' + fl('xray'), html: xrayStatusCell(xrayOrder, xrayReport, xrayElapsed, xrayTotal) },
