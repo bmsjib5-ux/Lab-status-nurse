@@ -566,7 +566,7 @@
   td.flash-new { animation: flashNew 2.6s ease-out; }
   /* คอลัมน์ "รายการ" — chip เขียว=มีผล, แดง=รอผล, Xray=เส้นประ */
   td.items-td { vertical-align: middle; }
-  .item-chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px; }
+  .item-chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
   .item-chip {
     font-size: 12px; padding: 2px 8px; border-radius: 8px; font-weight: 600;
     border: 1px solid transparent; white-space: nowrap; cursor: default;
@@ -615,7 +615,10 @@
     background: rgba(126, 87, 194, 0.16); color: var(--purple);
     border-color: rgba(126, 87, 194, 0.4);
   }
-  .badge.pttype { background: var(--primary-glow); color: var(--primary); border: 1px solid rgba(2,136,209,0.3); }
+  .badge.pttype {
+    background: var(--primary-glow); color: var(--primary); border: 1px solid rgba(2,136,209,0.3);
+    font-size: 13px; padding: 3px 8px; white-space: normal; word-break: break-word; line-height: 1.35;
+  }
   .badge.room { background: rgba(0, 172, 193, 0.14); color: var(--cyan); border: 1px solid rgba(0, 172, 193, 0.35); }
   .slot-cell { font-weight: 700; color: var(--primary-strong); }
   tbody tr.row-pending,
@@ -2617,7 +2620,7 @@ function itemsCell(items) {
   return `<div class="item-chips">` + items.map(it => {
     const cls = it.reported ? 'ok' : 'no';
     const label = String(it.name || it.code || '');
-    const short = label.length > 18 ? label.slice(0, 17) + '…' : label;
+    const short = label.length > 26 ? label.slice(0, 25) + '…' : label;
     const title = `${it.kind === 'XRAY' ? '📷 X-ray: ' : '🧪 Lab: '}${it.name || it.code} — ${it.reported ? 'รายงานผลแล้ว ✓' : 'ยังไม่มีผล'}`;
     return `<span class="item-chip ${cls}${it.kind === 'XRAY' ? ' xray' : ''}" title="${escHtml(title)}">${escHtml(short)}</span>`;
   }).join('') + `</div>`;
@@ -2633,7 +2636,8 @@ function renderTable(data) {
     return;
   }
 
-  const totals = { labDone: 0, xrayDone: 0, nurseDone: 0, doctorDone: 0 };
+  const totals = { labDone: 0, xrayDone: 0, nurseDone: 0, doctorDone: 0,
+                   labPend: 0, xrayPend: 0, nursePend: 0, doctorPend: 0 };
   const rows = data.map((r, i) => {
     const order = Number(r.cc_order || 0);
     const receive = Number(r.cc_receive || 0);
@@ -2649,9 +2653,11 @@ function renderTable(data) {
     const xrayTotal = (xrayOrder && xrayReport) ? minutesBetween(r.xray_done_start, r.xray_done_end) : null;  // total เมื่อ xray เสร็จ
 
     if (order > 0 && report >= order) totals.labDone++;
+    else if (order > 0) totals.labPend++;
     if (xrayOrder && xrayReport) totals.xrayDone++;
-    if (nurseDone) totals.nurseDone++;
-    if (doctorDone) totals.doctorDone++;
+    else if (xrayOrder) totals.xrayPend++;
+    if (nurseDone) totals.nurseDone++; else totals.nursePend++;
+    if (doctorDone) totals.doctorDone++; else totals.doctorPend++;
 
     const slot = (r.qs_slot != null && r.qs_slot !== '')
       ? escHtml(String(r.qs_slot)) : '<span class="num-zero">-</span>';
@@ -2719,8 +2725,8 @@ function renderTable(data) {
             <th class="center">XRAY</th>
             <th class="center">Nurse</th>
             <th class="center">Doctor</th>
-            <th style="width:250px;">รายการ (Lab/X-ray)</th>
-            <th>สิทธิการรักษา</th>
+            <th style="width:420px;">รายการ (Lab/X-ray)</th>
+            <th style="width:120px;">สิทธิการรักษา</th>
           </tr>
         </thead>
         <tbody>${trHtml}</tbody>
@@ -2738,11 +2744,12 @@ function renderTable(data) {
   // tfoot: อัปเดตเฉพาะที่เปลี่ยน
   const tf = wrap.querySelector('tfoot tr');
   if (tf) {
+    const ft = (done, pend) => `เสร็จ ${done.toLocaleString()}` + (pend > 0 ? ` · รอ ${pend.toLocaleString()}` : '');
     [`รวม ${data.length.toLocaleString()} Visit`,
-     `เสร็จ ${totals.labDone.toLocaleString()}`,
-     `เสร็จ ${totals.xrayDone.toLocaleString()}`,
-     `เสร็จ ${totals.nurseDone.toLocaleString()}`,
-     `เสร็จ ${totals.doctorDone.toLocaleString()}`
+     ft(totals.labDone, totals.labPend),
+     ft(totals.xrayDone, totals.xrayPend),
+     ft(totals.nurseDone, totals.nursePend),
+     ft(totals.doctorDone, totals.doctorPend)
     ].forEach((v, i) => { const td = tf.children[i]; if (td && td.textContent !== v) td.textContent = v; });
   }
 
@@ -2778,10 +2785,10 @@ function renderSummary(data) {
 
   const pct = (n, d) => d > 0 ? `${(n / d * 100).toFixed(0)}%` : '-';
   document.getElementById('sumPatient').textContent = total.toLocaleString();
-  document.getElementById('sumNurse').textContent = nurseDone.toLocaleString();
-  document.getElementById('sumNurseSub').textContent = `${pct(nurseDone, total)} · รอ ${(total - nurseDone).toLocaleString()}`;
-  document.getElementById('sumDoctor').textContent = doctorDone.toLocaleString();
-  document.getElementById('sumDoctorSub').textContent = `${pct(doctorDone, total)} · รอ ${(total - doctorDone).toLocaleString()}`;
+  document.getElementById('sumNurse').textContent = `${nurseDone.toLocaleString()}/${total.toLocaleString()}`;
+  document.getElementById('sumNurseSub').textContent = `${pct(nurseDone, total)} · รอซัก ${(total - nurseDone).toLocaleString()}`;
+  document.getElementById('sumDoctor').textContent = `${doctorDone.toLocaleString()}/${total.toLocaleString()}`;
+  document.getElementById('sumDoctorSub').textContent = `${pct(doctorDone, total)} · รอตรวจ ${(total - doctorDone).toLocaleString()}`;
   document.getElementById('sumLab').textContent = `${labDone.toLocaleString()}/${labWith.toLocaleString()}`;
   document.getElementById('sumLabSub').textContent = labWith > 0 ? `${pct(labDone, labWith)} · รอ ${(labWith - labDone).toLocaleString()}` : 'ไม่มีสั่ง Lab';
   document.getElementById('sumXray').textContent = `${xrayDone.toLocaleString()}/${xrayWith.toLocaleString()}`;
