@@ -1244,9 +1244,15 @@ const TOTALS_SQL = `select v.vn,
 from ovst v where :visit_filter`;
 
 // รายการ Lab/Xray ต่อ visit (ตามวันสั่ง) — เขียว=รายงานผลแล้ว, แดง=ยังไม่มีผล
-// Lab: lab_order_service (ผลระดับใบสั่ง lab_head.confirm_report/report_date)
+// Lab: list จาก lab_order_service · reported เช็ก "ผลราย item" จาก lab_order (lab_order_result)
+//   ถ้า item ไม่มีแถวใน lab_order (เช่น panel CBC) -> fallback ระดับใบสั่ง (report_date)
 const LAB_ITEMS_SQL = `select h.vn as vn, los.lab_code as code, los.lab_name as name,
-  (case when coalesce(h.confirm_report,'N') = 'Y' or h.report_date is not null then 1 else 0 end) as reported
+  (case
+     when exists(select 1 from lab_order lo where lo.lab_order_number = h.lab_order_number
+        and lo.lab_items_code = los.lab_code and lo.lab_order_result is not null and trim(lo.lab_order_result) <> '') then 1
+     when not exists(select 1 from lab_order lo where lo.lab_order_number = h.lab_order_number and lo.lab_items_code = los.lab_code)
+        and (coalesce(h.confirm_report,'N') = 'Y' or h.report_date is not null) then 1
+     else 0 end) as reported
 from lab_head h
   join lab_order_service los on los.lab_order_number = h.lab_order_number
 where h.order_date between ':d1' and ':d2'
@@ -2502,7 +2508,8 @@ function filterTable() {
     return true;
   });
 
-  // เรียงตาม qs_slot (คิวห้องตรวจ) — คนไม่มี slot ไปท้าย, tiebreak ด้วยเวลา visit แล้ว HN
+  // เรียง: 1) qs_slot (คิวห้องตรวจ) — คนไม่มี slot ไปท้าย  2) QN (oqueue)  3) HN
+  const qnKey = r => { const n = Number(r.qn); return n > 0 ? n : Infinity; };  // ไม่มีคิว -> ท้าย
   filteredData.sort((a, b) => {
     const ka = slotKey(a), kb = slotKey(b);
     if (ka !== null || kb !== null) {
@@ -2511,8 +2518,8 @@ function filterTable() {
       if (typeof ka === 'number' && typeof kb === 'number') { if (ka !== kb) return ka - kb; }
       else { const c = String(ka).localeCompare(String(kb)); if (c !== 0) return c; }
     }
-    const ta = String(a.vsttime || ''), tb = String(b.vsttime || '');
-    if (ta !== tb) return ta.localeCompare(tb);
+    const qa = qnKey(a), qb = qnKey(b);
+    if (qa !== qb) return qa - qb;
     return String(a.hn || '').localeCompare(String(b.hn || ''));
   });
 
@@ -2558,14 +2565,27 @@ function waitPill(elapsed, threshold) {
 }
 
 // ===== สถานะแต่ละคอลัมน์ (pill สี + เวลารอ) =====
-function labStatusCell(order, receive, report, elapsed, totalMin) {
+function labStatusCell(order, receive, report, elapsed, totalMin, itemDone, itemTotal) {
   order = Number(order || 0); receive = Number(receive || 0); report = Number(report || 0);
   if (order === 0) return '<span class="num-zero">ไม่มีสั่ง</span>';
+
+  // ใช้ผลราย item (จากคอลัมน์รายการ) ถ้าโหลดเสร็จแล้ว — แม่นกว่า order-level
+  if (itemTotal > 0) {
+    if (itemDone >= itemTotal) {
+      const tot = (totalMin != null) ? `<span class="wtot"> · total ${fmtMin(totalMin)}</span>` : '';
+      return `<span class="pill-mini ok">✓ ผลครบ ${itemDone}/${itemTotal}${tot}</span>`;
+    }
+    const w = waitPill(elapsed, SLA_MIN.lab);
+    if (itemDone > 0) return `<span class="${w.cls}">บางส่วน ${itemDone}/${itemTotal}${w.tag}</span>`;
+    return `<span class="${w.cls}">${receive > 0 ? `รอผล 0/${itemTotal}` : `รอรับ 0/${itemTotal}`}${w.tag}</span>`;
+  }
+
+  // รายการยังโหลดไม่เสร็จ -> ใช้ order-level เดิม
   if (report >= order) {
     const tot = (totalMin != null) ? `<span class="wtot"> · total ${fmtMin(totalMin)}</span>` : '';
     return `<span class="pill-mini ok">✓ ผลครบ ${report}/${order}${tot}</span>`;
   }
-  const label = report > 0 ? `รอผล ${report}/${order}` : (receive > 0 ? `รับแล้ว ${receive}/${order}` : `รอรับ 0/${order}`);
+  const label = report > 0 ? `บางส่วน ${report}/${order}` : (receive > 0 ? `รับแล้ว ${receive}/${order}` : `รอรับ 0/${order}`);
   const w = waitPill(elapsed, SLA_MIN.lab);
   return `<span class="${w.cls}">${label}${w.tag}</span>`;
 }
@@ -2650,6 +2670,10 @@ function renderTable(data) {
     const labElapsed = minutesSinceDatetime(r.lab_wait_since);  // lab = ตั้งแต่รับ lab
     const xrayElapsed = minutesSinceDatetime(r.xray_wait_since);// xray = ตั้งแต่รับตัว
     const labTotal = (order > 0 && report >= order) ? minutesBetween(r.lab_done_recv, r.lab_done_rep) : null; // total เมื่อผลครบ
+    // จำนวนผล Lab ราย item (จากคอลัมน์รายการ) — ไว้เช็ก "บางส่วน / ครบ"
+    const labItems = Array.isArray(r.items) ? r.items.filter(it => it.kind === 'LAB') : null;
+    const labItemTotal = labItems ? labItems.length : 0;
+    const labItemDone = labItems ? labItems.filter(it => it.reported).length : 0;
     const xrayTotal = (xrayOrder && xrayReport) ? minutesBetween(r.xray_done_start, r.xray_done_end) : null;  // total เมื่อ xray เสร็จ
 
     if (order > 0 && report >= order) totals.labDone++;
@@ -2664,8 +2688,9 @@ function renderTable(data) {
     const room = r.room_name
       ? `<span class="badge room">${escHtml(r.room_name)}</span>` : '<span class="num-zero">-</span>';
 
-    // แถวไฮไลต์ส้ม = มีสั่ง Lab แต่ผลยังไม่ครบ
-    const isPending = (order > 0 && report < order);
+    // แถวไฮไลต์ส้ม = มีสั่ง Lab แต่ผลยังไม่ครบ (เช็ก item-level ถ้าโหลดแล้ว)
+    const labComplete = labItemTotal > 0 ? (labItemDone >= labItemTotal) : (report >= order);
+    const isPending = order > 0 && !labComplete;
     const rowClass = isPending ? 'row-pending' : '';
     // ช่องที่เพิ่งเปลี่ยนเป็น "เสร็จ" ตั้งแต่รีเฟรชก่อน -> วาบเขียว
     const fl = (col) => flashCells.has(`${r.vn}:${col}`) ? ' flash-new' : '';
@@ -2680,7 +2705,7 @@ function renderTable(data) {
         { cls: 'num slot-cell', html: slot },
         { cls: 'pt-cell', html: `<div class="pt-hn"><span class="ptl">HN</span> <span class="hn-copy" title="คลิกเพื่อคัดลอก HN" onclick="copyHn(event,'${String(r.hn || '').replace(/[^0-9A-Za-z]/g, '')}')">${escHtml(r.hn || '')}</span>${qn}</div><div class="pt-name">${escHtml(r.pt_name || '-')}</div>` },
         { cls: '', html: room },
-        { cls: 'center' + fl('lab'), html: labStatusCell(order, receive, report, labElapsed, labTotal) },
+        { cls: 'center' + fl('lab'), html: labStatusCell(order, receive, report, labElapsed, labTotal, labItemDone, labItemTotal) },
         { cls: 'center' + fl('xray'), html: xrayStatusCell(xrayOrder, xrayReport, xrayElapsed, xrayTotal) },
         { cls: 'center' + fl('nurse'), html: doneCell(nurseDone, 'ซักแล้ว', 'รอซัก', elapsed, SLA_MIN.nurse) },
         { cls: 'center' + fl('doctor'), html: doneCell(doctorDone, 'ตรวจแล้ว', 'รอตรวจ', elapsed, SLA_MIN.doctor) },
