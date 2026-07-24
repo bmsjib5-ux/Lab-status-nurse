@@ -1231,6 +1231,7 @@ let filteredData = [];
 let flashCells = new Set();     // "vn:col" ที่เพิ่งเปลี่ยนเป็นเสร็จ (วาบเขียว)
 let prevStatusSnap = null;      // snapshot สถานะรอบก่อน ไว้เทียบหาความเปลี่ยนแปลง
 let prevAbnSnap = null;         // snapshot ผลผิดปกติรอบก่อน (แยกคิวรี่ LABFLAG)
+let lastRenderMap = new Map();  // vn -> {cls, cells[]} ที่เรนเดอร์ล่าสุด (ไว้ patch เฉพาะช่องที่เปลี่ยน)
 let pendingOnly = false;        // ปุ่ม "เฉพาะที่ค้าง"
 let bottleneckCollapsed = false; // พับ/กาง คอขวดต่อห้อง
 const BOTTLENECK_COOKIE = 'lab_bottleneck_collapsed';
@@ -2558,6 +2559,7 @@ function renderTable(data) {
 
   if (data.length === 0) {
     wrap.innerHTML = `<div class="empty-state"><h3>ไม่พบข้อมูล</h3><div>ลองปรับช่วงวันที่ / ห้องตรวจ หรือคีย์ค้นหา</div></div>`;
+    lastRenderMap = new Map();
     return;
   }
 
@@ -2595,52 +2597,87 @@ function renderTable(data) {
     const qn = (r.qn != null && r.qn !== '' && Number(r.qn) > 0)
       ? `<span class="pt-qn">QN ${escHtml(String(r.qn))}</span>` : '';
 
-    return `<tr class="${rowClass}" data-hn="${escHtml(String(r.hn || ''))}" onclick="openDetail(filteredData[${i}])">
-      <td class="num">${i + 1}</td>
-      <td class="num slot-cell">${slot}</td>
-      <td class="pt-cell">
-        <div class="pt-hn"><span class="ptl">HN</span> ${escHtml(r.hn || '')}${qn}</div>
-        <div class="pt-name">${escHtml(r.pt_name || '-')}</div>
-      </td>
-      <td>${room}</td>
-      <td class="center${fl('lab')}">${labStatusCell(order, receive, report, labElapsed, labTotal)}</td>
-      <td class="center${fl('xray')}">${xrayStatusCell(xrayOrder, xrayReport, xrayElapsed, xrayTotal)}</td>
-      <td class="center${fl('nurse')}">${doneCell(nurseDone, 'ซักแล้ว', 'รอซัก', elapsed, SLA_MIN.nurse)}</td>
-      <td class="center${fl('doctor')}">${doneCell(doctorDone, 'ตรวจแล้ว', 'รอตรวจ', elapsed, SLA_MIN.doctor)}</td>
-      <td class="items-td">${itemsCell(r.items)}</td>
-      <td>${r.pttype_name ? `<span class="badge pttype">${escHtml(r.pttype_name)}</span>` : '<span class="num-zero">-</span>'}</td>
-    </tr>`;
-  }).join('');
+    return {
+      vn: String(r.vn), hn: String(r.hn || ''), idx: i, cls: rowClass,
+      cells: [
+        { cls: 'num', html: String(i + 1) },
+        { cls: 'num slot-cell', html: slot },
+        { cls: 'pt-cell', html: `<div class="pt-hn"><span class="ptl">HN</span> ${escHtml(r.hn || '')}${qn}</div><div class="pt-name">${escHtml(r.pt_name || '-')}</div>` },
+        { cls: '', html: room },
+        { cls: 'center' + fl('lab'), html: labStatusCell(order, receive, report, labElapsed, labTotal) },
+        { cls: 'center' + fl('xray'), html: xrayStatusCell(xrayOrder, xrayReport, xrayElapsed, xrayTotal) },
+        { cls: 'center' + fl('nurse'), html: doneCell(nurseDone, 'ซักแล้ว', 'รอซัก', elapsed, SLA_MIN.nurse) },
+        { cls: 'center' + fl('doctor'), html: doneCell(doctorDone, 'ตรวจแล้ว', 'รอตรวจ', elapsed, SLA_MIN.doctor) },
+        { cls: 'items-td', html: itemsCell(r.items) },
+        { cls: '', html: r.pttype_name ? `<span class="badge pttype">${escHtml(r.pttype_name)}</span>` : '<span class="num-zero">-</span>' },
+      ]
+    };
+  });
 
-  wrap.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th class="num" style="width:44px;">#</th>
-          <th class="num" style="width:64px;">Slot</th>
-          <th style="width:230px;">HN / ชื่อ-สกุล</th>
-          <th style="width:150px;">ห้องตรวจ</th>
-          <th class="center">LAB</th>
-          <th class="center">XRAY</th>
-          <th class="center">Nurse</th>
-          <th class="center">Doctor</th>
-          <th style="width:250px;">รายการ (Lab/X-ray)</th>
-          <th>สิทธิการรักษา</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" style="text-align:right;">รวม ${data.length.toLocaleString()} Visit</td>
-          <td class="center">เสร็จ ${totals.labDone.toLocaleString()}</td>
-          <td class="center">เสร็จ ${totals.xrayDone.toLocaleString()}</td>
-          <td class="center">เสร็จ ${totals.nurseDone.toLocaleString()}</td>
-          <td class="center">เสร็จ ${totals.doctorDone.toLocaleString()}</td>
-          <td></td>
-          <td></td>
-        </tr>
-      </tfoot>
-    </table>`;
+  const tbody = wrap.querySelector('tbody');
+  // patch ได้เมื่อจำนวนแถว + ลำดับ vn ตรงกับที่เรนเดอร์ไว้ (ไม่งั้น rebuild)
+  const canPatch = tbody && tbody.children.length === rows.length
+    && rows.every((row, i) => tbody.children[i].dataset.vn === row.vn);
+
+  if (canPatch) {
+    rows.forEach((row, i) => {
+      const tr = tbody.children[i];
+      const prev = lastRenderMap.get(row.vn);
+      if (tr.className !== row.cls) tr.className = row.cls;
+      row.cells.forEach((c, j) => {
+        const p = prev && prev.cells[j];
+        if (p && p.html === c.html && p.cls === c.cls) return;   // ไม่เปลี่ยน -> ข้าม
+        const td = tr.children[j];
+        if (!td) return;
+        if (td.className !== c.cls) td.className = c.cls;
+        if (!p || p.html !== c.html) td.innerHTML = c.html;
+      });
+    });
+  } else {
+    const trHtml = rows.map(row =>
+      `<tr class="${row.cls}" data-vn="${escHtml(row.vn)}" data-hn="${escHtml(row.hn)}" onclick="openDetail(filteredData[${row.idx}])">`
+      + row.cells.map(c => `<td class="${c.cls}">${c.html}</td>`).join('') + `</tr>`).join('');
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th class="num" style="width:44px;">#</th>
+            <th class="num" style="width:64px;">Slot</th>
+            <th style="width:230px;">HN / ชื่อ-สกุล</th>
+            <th style="width:150px;">ห้องตรวจ</th>
+            <th class="center">LAB</th>
+            <th class="center">XRAY</th>
+            <th class="center">Nurse</th>
+            <th class="center">Doctor</th>
+            <th style="width:250px;">รายการ (Lab/X-ray)</th>
+            <th>สิทธิการรักษา</th>
+          </tr>
+        </thead>
+        <tbody>${trHtml}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="text-align:right;"></td>
+            <td class="center"></td><td class="center"></td>
+            <td class="center"></td><td class="center"></td>
+            <td></td><td></td>
+          </tr>
+        </tfoot>
+      </table>`;
+  }
+
+  // tfoot: อัปเดตเฉพาะที่เปลี่ยน
+  const tf = wrap.querySelector('tfoot tr');
+  if (tf) {
+    [`รวม ${data.length.toLocaleString()} Visit`,
+     `เสร็จ ${totals.labDone.toLocaleString()}`,
+     `เสร็จ ${totals.xrayDone.toLocaleString()}`,
+     `เสร็จ ${totals.nurseDone.toLocaleString()}`,
+     `เสร็จ ${totals.doctorDone.toLocaleString()}`
+    ].forEach((v, i) => { const td = tf.children[i]; if (td && td.textContent !== v) td.textContent = v; });
+  }
+
+  // เก็บ snapshot ไว้เทียบรอบหน้า
+  lastRenderMap = new Map(rows.map(row => [row.vn, { cls: row.cls, cells: row.cells }]));
 }
 
 function renderSummary(data) {
