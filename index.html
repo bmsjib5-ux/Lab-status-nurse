@@ -1,0 +1,2840 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMS Lab Status</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #dbe8f5;
+    --bg-grad-1: #dbe8f5;
+    --bg-grad-2: #bcd2ea;
+    --bg-grad-3: #cadcef;
+    --surface: rgba(255, 255, 255, 0.72);
+    --surface-strong: rgba(255, 255, 255, 0.9);
+    --surface2: rgba(222, 235, 248, 0.62);
+    --border: rgba(157, 184, 214, 0.55);
+    --border-strong: rgba(123, 160, 201, 0.7);
+    --text: #15428b;
+    --text-muted: #5e7fa6;
+    --primary: #2f6db3;
+    --primary-strong: #1f5a9c;
+    --primary-glow: rgba(47, 109, 179, 0.18);
+    --success: #00897b;
+    --success-bg: rgba(0, 137, 123, 0.14);
+    --error: #d32f2f;
+    --error-bg: rgba(211, 47, 47, 0.12);
+    --warn: #f57c00;
+    --warn-bg: rgba(245, 124, 0, 0.14);
+    --accent: #3f7cc0;
+    --purple: #7e57c2;
+    --orange: #fb8c00;
+    --pink: #ec407a;
+    --cyan: #00acc1;
+    --glass-blur: 14px;
+    --glass-shadow: 0 8px 32px rgba(31, 90, 156, 0.10), 0 2px 8px rgba(31, 90, 156, 0.06);
+    --glass-shadow-strong: 0 12px 40px rgba(31, 90, 156, 0.18), 0 4px 12px rgba(31, 90, 156, 0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: linear-gradient(135deg, #e2ecf8 0%, #bfd4ec 45%, #d3e2f2 100%);
+    background-attachment: fixed;
+  }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    color: var(--text);
+    min-height: 100vh; font-size: 17px; line-height: 1.6;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(150, 185, 225, 0.42), transparent 38%),
+      radial-gradient(circle at 88% 12%, rgba(175, 200, 232, 0.45), transparent 42%),
+      radial-gradient(circle at 50% 95%, rgba(160, 192, 228, 0.42), transparent 45%);
+  }
+
+  /* Header */
+  .header {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 16px rgba(2, 119, 189, 0.08);
+    padding: 0 20px; display: flex; align-items: center; gap: 14px;
+    height: 60px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo-shield {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #4fc3f7, #0288d1);
+    border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 21px; color: #fff;
+    box-shadow: 0 4px 12px rgba(2, 136, 209, 0.35);
+  }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+  .header h1 span { color: var(--primary); }
+  .header-spacer { flex: 1; }
+  .home-link {
+    font-size: 15px; color: var(--text); text-decoration: none;
+    padding: 5px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(6px);
+    transition: all .15s;
+  }
+  .home-link:hover { background: rgba(255,255,255,0.8); border-color: var(--primary); color: var(--primary); }
+  .conn-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 14px; padding: 4px 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border); color: var(--text);
+  }
+  .conn-badge .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--error);
+    box-shadow: 0 0 6px var(--error);
+  }
+  .conn-badge.connected { background: var(--success-bg); border-color: rgba(0,137,123,.4); color: var(--success); }
+  .conn-badge.connected .dot { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+  /* Settings icon */
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.55); color: var(--primary);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s;
+    backdrop-filter: blur(8px);
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.9); border-color: var(--primary); transform: rotate(20deg); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  /* ===== แจ้งเตือนผล Lab/X-ray ===== */
+  .notif-wrap { position: relative; }
+  .notif-badge {
+    position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px;
+    padding: 0 4px; border-radius: 9px; background: var(--error); color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+  }
+  #notifBell.has-unseen { animation: bellRing 1s ease-in-out infinite; }
+  @keyframes bellRing { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(10deg)} 60%{transform:rotate(-6deg)} 80%{transform:rotate(3deg)} }
+  @media (prefers-reduced-motion: reduce) { #notifBell.has-unseen { animation: none; } }
+  .notif-panel {
+    position: absolute; top: 46px; right: 0; width: 340px; max-height: 460px;
+    background: rgba(255,255,255,0.96); backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(31,90,156,0.28); z-index: 300;
+    display: none; flex-direction: column; overflow: hidden;
+  }
+  .notif-panel.show { display: flex; }
+  .notif-panel-head {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    background: rgba(205,224,243,0.4);
+  }
+  .notif-panel-head .np-title { font-weight: 700; color: var(--primary-strong); font-size: 14px; }
+  .notif-panel-head .np-tg { font-size: 12px; color: var(--text); display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+  .notif-panel-head .np-tg input { accent-color: var(--primary); }
+  .notif-panel-head .np-clear {
+    margin-left: auto; font-size: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.7);
+    border-radius: 7px; padding: 3px 9px; cursor: pointer; color: var(--text-muted);
+  }
+  .notif-panel-head .np-clear:hover { color: var(--error); border-color: var(--error); }
+  .notif-list { overflow-y: auto; padding: 6px; }
+  .notif-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 10px; }
+  .notif-item {
+    display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px;
+    border-radius: 9px; margin-bottom: 4px; cursor: pointer;
+    background: rgba(0,137,123,0.08); border: 1px solid rgba(0,137,123,0.2);
+  }
+  .notif-item:hover { background: rgba(0,137,123,0.14); }
+  .notif-item.xray { background: rgba(0,172,193,0.09); border-color: rgba(0,172,193,0.25); }
+  .notif-item.abnormal { background: rgba(245,124,0,0.11); border-color: rgba(245,124,0,0.35); }
+  .notif-item.abnormal .ni-title { color: var(--warn); }
+  .notif-item.critical { background: rgba(211,47,47,0.13); border-color: rgba(211,47,47,0.45); }
+  .notif-item.critical .ni-title { color: var(--error); }
+  .notif-item .ni-ic { font-size: 16px; line-height: 1.3; }
+  .notif-item .ni-main { flex: 1; min-width: 0; }
+  .notif-item .ni-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .notif-item .ni-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .notif-item .ni-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+  /* toast แจ้งเตือน (แยกจาก toast ปกติ ให้เด่นกว่า) */
+  .toast.notif { border-left: 4px solid var(--success); cursor: pointer; }
+  .toast.notif .tn-head { font-weight: 700; color: var(--success); font-size: 15px; margin-bottom: 4px; }
+  .toast.notif .tn-line { font-size: 13px; color: var(--text); }
+  .toast.notif .tn-more { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .toast.notif.abnormal { border-left-color: var(--warn); }
+  .toast.notif.abnormal .tn-head { color: var(--warn); }
+  .toast.notif.critical { border-left-color: var(--error); box-shadow: 0 8px 24px rgba(211,47,47,0.25); }
+  .toast.notif.critical .tn-head { color: var(--error); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(13, 59, 102, 0.32);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(2, 119, 189, 0.25);
+    width: 100%; max-width: 460px;
+    padding: 22px;
+    animation: modalIn .2s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .modal-head h2 { font-size: 18px; font-weight: 700; color: var(--text); flex: 1; }
+  .modal-head .close-x {
+    width: 28px; height: 28px; border-radius: 8px; border: none;
+    background: rgba(255,255,255,0.6); color: var(--text-muted);
+    cursor: pointer; font-size: 18px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .modal-head .close-x:hover { background: var(--error-bg); color: var(--error); }
+  .modal label.field-label {
+    display: block; font-size: 14px; font-weight: 600; color: var(--text);
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .modal input.field-input {
+    width: 100%; background: rgba(255,255,255,0.85);
+    border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: 10px; font-size: 15px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all .15s;
+  }
+  .modal input.field-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-glow); background: #fff; }
+  .modal-hint {
+    font-size: 14px; color: var(--text-muted); margin-top: 8px;
+    line-height: 1.5;
+  }
+  .modal-current {
+    margin: 12px 0;
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--success-bg);
+    border: 1px solid rgba(0,137,123,0.3);
+    display: none;
+  }
+  .modal-current.show { display: block; }
+  .modal-current .label { font-size: 14px; color: var(--text-muted); font-weight: 600; }
+  .modal-current .value { font-size: 15px; color: var(--success); font-weight: 700; margin-top: 2px; }
+  .modal-actions {
+    display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* Layout */
+  .container { padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
+
+  /* Glass panel base */
+  .glass {
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Session bar */
+  .session-bar {
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .session-bar label {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .session-bar input {
+    background: rgba(255,255,255,0.7); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 12px; border-radius: 8px; font-size: 15px;
+    font-family: 'JetBrains Mono', monospace; min-width: 280px; flex: 1;
+    transition: all .15s;
+  }
+  .session-bar input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); background: #fff; }
+  .btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: #fff; border: none;
+    padding: 9px 18px; border-radius: 8px; cursor: pointer;
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    transition: all .18s;
+    box-shadow: 0 4px 12px rgba(2, 136, 209, 0.25);
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2, 136, 209, 0.35); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn.secondary {
+    background: rgba(255,255,255,0.65); color: var(--text);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px); box-shadow: 0 2px 6px rgba(2, 119, 189, 0.08);
+  }
+  .btn.secondary:hover { background: rgba(255,255,255,0.9); border-color: var(--primary); color: var(--primary); }
+  .btn.success { background: linear-gradient(135deg, #26a69a, #00897b); box-shadow: 0 4px 12px rgba(0, 137, 123, 0.3); }
+  .btn.success:hover { box-shadow: 0 6px 16px rgba(0, 137, 123, 0.42); }
+  .btn.warn { background: linear-gradient(135deg, #ffb74d, #f57c00); color: #fff; box-shadow: 0 4px 12px rgba(245,124,0,.25); }
+  .btn.connected { background: linear-gradient(135deg, #26a69a, #00695c); }
+
+  /* Filters */
+  .filter-bar {
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+    padding: 14px 16px;
+    display: flex; align-items: end; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label {
+    font-size: 14px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .filter-group input,
+  .filter-group select {
+    background: rgba(255,255,255,0.75); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 12px; border-radius: 8px; font-size: 16px;
+    font-family: inherit; min-width: 140px;
+    transition: all .15s;
+  }
+  .filter-group input:focus,
+  .filter-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); background: #fff; }
+  .filter-spacer { flex: 1; }
+
+  /* Cards */
+  .cards {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px; margin-bottom: 16px;
+  }
+
+  /* คอขวดต่อห้อง */
+  .bottleneck {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+    padding: 10px 14px; margin-bottom: 16px;
+  }
+  .bottleneck .bn-title {
+    font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap;
+    background: none; border: none; cursor: pointer; padding: 0; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px; user-select: none;
+  }
+  .bottleneck .bn-title:hover { color: var(--primary); }
+  .bottleneck .bn-arrow { color: var(--primary); font-size: 12px; transition: transform .2s; }
+  .bottleneck.collapsed .bn-arrow { transform: rotate(-90deg); }
+  .bottleneck.collapsed .bn-list { display: none; }
+  .bottleneck .bn-count { color: var(--text-muted); font-weight: 600; font-size: 13px; }
+  .bottleneck .bn-list { display: flex; gap: 8px; flex-wrap: wrap; }
+  .bn-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.7); border: 1px solid var(--border);
+    border-radius: 10px; padding: 5px 10px; font-size: 13px;
+  }
+  .bn-chip .bn-room { font-weight: 700; color: var(--primary-strong); }
+  .bn-chip .bn-k {
+    color: var(--warn); background: var(--warn-bg);
+    border-radius: 8px; padding: 1px 7px; font-weight: 600;
+  }
+  /* ปุ่ม "เฉพาะที่ค้าง" ตอน active */
+  .pending-toggle.active {
+    background: linear-gradient(135deg, #ef5350, #d32f2f); color: #fff;
+    border-color: transparent; box-shadow: 0 4px 12px rgba(211,47,47,0.3);
+  }
+  .pending-toggle.active:hover { color: #fff; }
+  .card {
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px; position: relative;
+    box-shadow: var(--glass-shadow);
+    transition: all .2s;
+    overflow: hidden;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--glass-shadow-strong); }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    border-radius: 14px 14px 0 0;
+  }
+  .card::after {
+    content: ''; position: absolute; top: -50%; right: -20%;
+    width: 140px; height: 140px; border-radius: 50%;
+    opacity: 0.18; filter: blur(30px); z-index: 0;
+  }
+  .card > * { position: relative; z-index: 1; }
+  .card.blue::before { background: linear-gradient(90deg, #4fc3f7, #0288d1); }
+  .card.blue::after { background: #4fc3f7; }
+  .card.green::before { background: linear-gradient(90deg, #4db6ac, #00897b); }
+  .card.green::after { background: #4db6ac; }
+  .card.orange::before { background: linear-gradient(90deg, #ffb74d, #f57c00); }
+  .card.orange::after { background: #ffb74d; }
+  .card.purple::before { background: linear-gradient(90deg, #9575cd, #7e57c2); }
+  .card.purple::after { background: #9575cd; }
+  .card.pink::before { background: linear-gradient(90deg, #f06292, #ec407a); }
+  .card.pink::after { background: #f06292; }
+  .card-label {
+    font-size: 14px; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px;
+  }
+  .card-value { font-size: 29px; font-weight: 700; line-height: 1.2; }
+  .card-sub { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+  .card.blue .card-value { color: var(--primary); }
+  .card.green .card-value { color: var(--success); }
+  .card.orange .card-value { color: var(--warn); }
+  .card.purple .card-value { color: var(--purple); }
+  .card.pink .card-value { color: var(--pink); }
+
+  /* Result table */
+  .result-wrap {
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: var(--glass-shadow);
+  }
+  .result-toolbar {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: rgba(255,255,255,0.45);
+  }
+  .result-toolbar .pill {
+    font-size: 14px; padding: 4px 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.7); border: 1px solid var(--border);
+    color: var(--text-muted);
+    backdrop-filter: blur(6px);
+  }
+  .result-toolbar .pill strong { color: var(--primary); font-weight: 700; }
+  .table-search {
+    background: rgba(255,255,255,0.75); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 12px; border-radius: 8px; font-size: 15px;
+    font-family: inherit; min-width: 200px;
+    transition: all .15s;
+  }
+  .table-search:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); background: #fff; }
+  .chk-group {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.7); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 10px;
+    backdrop-filter: blur(6px);
+  }
+  .chk-group label {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 15px; cursor: pointer; color: var(--text);
+    padding: 2px 4px; user-select: none;
+  }
+  .chk-group input[type="checkbox"] {
+    accent-color: var(--primary); cursor: pointer; margin: 0;
+  }
+  .chk-group .sep { color: var(--text-muted); font-size: 14px; margin-right: 2px; font-weight: 600; }
+  .badge.dept-opd { background: rgba(2, 136, 209, 0.14); color: var(--primary); }
+  .badge.dept-ipd { background: rgba(236, 64, 122, 0.14); color: var(--pink); }
+  .badge.dept-mix { background: rgba(126, 87, 194, 0.14); color: var(--purple); }
+  .table-scroll { overflow-x: auto; max-height: calc(100vh - 360px); }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 16px;
+  }
+  thead th {
+    background: linear-gradient(180deg, rgba(238, 244, 251, 0.96), rgba(205, 224, 243, 0.94));
+    padding: 11px 14px; text-align: left;
+    border-bottom: 1px solid var(--border-strong);
+    border-right: 1px solid rgba(157, 184, 214, 0.4); white-space: nowrap;
+    font-size: 14px; text-transform: uppercase; letter-spacing: 0.3px;
+    color: #15428b; font-weight: 700;
+    position: sticky; top: 0; z-index: 5;
+    backdrop-filter: blur(10px);
+  }
+  thead th:last-child { border-right: none; }
+  thead th.num, thead th.center { text-align: center; }
+  tbody td { padding: 14px 14px; border-bottom: 1px solid rgba(157, 184, 214, 0.32); border-right: 1px solid rgba(157, 184, 214, 0.16); }
+  tbody td:last-child { border-right: none; }
+  tbody td.num { text-align: center; font-family: 'JetBrains Mono', monospace; }
+  tbody td.center { text-align: center; }
+  /* ช่อง HN + ชื่อ รวมกัน — สูงขึ้น ตัวใหญ่ขึ้น */
+  td.pt-cell { line-height: 1.3; }
+  td.pt-cell .pt-hn {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    color: var(--primary); font-size: 15px; letter-spacing: 0.2px;
+  }
+  td.pt-cell .pt-hn .ptl { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+  td.pt-cell .pt-qn {
+    margin-left: 10px; color: var(--warn); font-weight: 700;
+    background: var(--warn-bg); border-radius: 6px; padding: 1px 7px; font-size: 13px;
+  }
+  td.pt-cell .pt-name {
+    font-size: 19px; font-weight: 600; color: var(--text);
+    margin-top: 3px; word-break: break-word;
+  }
+  /* pill สถานะในคอลัมน์ LAB/XRAY/Nurse/Doctor ให้ใหญ่อ่านง่าย */
+  td.center .pill-mini { font-size: 14px; padding: 4px 11px; display: inline-block; transform-origin: center; }
+
+  /* กระพริบ/ขยับเฉพาะสถานะที่ยังค้าง เพื่อให้พยาบาลสังเกต + ติดตามง่าย
+     (สถานะ ✓ เสร็จแล้ว อยู่นิ่ง — กวาดตาแล้วรู้ทันทีว่าเหลือใครต้องตามงาน) */
+  @keyframes statusPulse {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(245, 124, 0, 0); }
+    50%      { transform: scale(1.07); box-shadow: 0 0 0 4px rgba(245, 124, 0, 0.18); }
+  }
+  @keyframes statusBlink {
+    0%, 100% { opacity: 1;    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+    50%      { opacity: 0.5;  box-shadow: 0 0 0 5px rgba(211, 47, 47, 0.22); }
+  }
+  td.center .pill-mini.wait { animation: statusPulse 1.4s ease-in-out infinite; }
+  td.center .pill-mini.no   { animation: statusBlink 0.9s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    td.center .pill-mini.wait,
+    td.center .pill-mini.no,
+    td.flash-new { animation: none; }
+  }
+  /* เวลารอ ต่อท้าย pill */
+  td.center .pill-mini .wmin { font-weight: 700; opacity: 0.85; }
+  td.center .pill-mini .wtot { font-weight: 700; opacity: 0.75; }
+  td.center .pill-mini.no .wmin { opacity: 1; }
+  /* ช่องที่เพิ่งเปลี่ยนเป็นเสร็จ -> วาบเขียว */
+  @keyframes flashNew {
+    0%   { background: rgba(0, 137, 123, 0.5); }
+    100% { background: transparent; }
+  }
+  td.flash-new { animation: flashNew 2.6s ease-out; }
+  /* คอลัมน์ "รายการ" — chip เขียว=มีผล, แดง=รอผล, Xray=เส้นประ */
+  td.items-td { vertical-align: middle; }
+  .item-chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px; }
+  .item-chip {
+    font-size: 12px; padding: 2px 8px; border-radius: 8px; font-weight: 600;
+    border: 1px solid transparent; white-space: nowrap; cursor: default;
+  }
+  .item-chip.ok { background: var(--success-bg); color: var(--success); border-color: rgba(0, 137, 123, 0.4); }
+  .item-chip.no { background: var(--error-bg); color: var(--error); border-color: rgba(211, 47, 47, 0.4); }
+  .item-chip.xray { border-style: dashed; border-width: 1.5px; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover { background: rgba(255,255,255,0.55); }
+  tbody tr:nth-child(even) { background: rgba(227, 242, 253, 0.25); }
+  tbody tr:nth-child(even):hover { background: rgba(255,255,255,0.55); }
+  tbody tr.row-unpaid,
+  tbody tr.row-unpaid:nth-child(even) {
+    background: rgba(211, 47, 47, 0.14);
+    border-left: 3px solid var(--error);
+  }
+  tbody tr.row-unpaid:hover,
+  tbody tr.row-unpaid:nth-child(even):hover {
+    background: rgba(211, 47, 47, 0.22);
+  }
+  .hn-cell { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--primary); }
+  .num-val { font-weight: 600; }
+  .num-zero { color: var(--text-muted); opacity: 0.7; }
+  .num-partial { color: var(--warn); }
+  .num-full { color: var(--success); }
+  .badge {
+    display: inline-block; padding: 3px 11px; border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+  }
+  .badge.pay-y { background: var(--success-bg); color: var(--success); border: 1px solid rgba(0,137,123,0.3); }
+  .badge.pay-n { background: var(--error-bg); color: var(--error); border: 1px solid rgba(211,47,47,0.3); }
+  .badge.pay-p { background: var(--warn-bg); color: var(--warn); border: 1px solid rgba(245,124,0,0.3); }
+  .badge.pay-edc {
+    background: rgba(126, 87, 194, 0.16); color: var(--purple);
+    border: 1px solid rgba(126, 87, 194, 0.4);
+  }
+  .badge.pay-debt {
+    background: rgba(0, 172, 193, 0.14); color: var(--cyan);
+    border: 1px solid rgba(0, 172, 193, 0.4);
+  }
+  .pill-mini.debt {
+    background: rgba(0, 172, 193, 0.14); color: var(--cyan);
+    border-color: rgba(0, 172, 193, 0.4);
+  }
+  .pill-mini.edc {
+    background: rgba(126, 87, 194, 0.16); color: var(--purple);
+    border-color: rgba(126, 87, 194, 0.4);
+  }
+  .badge.pttype { background: var(--primary-glow); color: var(--primary); border: 1px solid rgba(2,136,209,0.3); }
+  .badge.room { background: rgba(0, 172, 193, 0.14); color: var(--cyan); border: 1px solid rgba(0, 172, 193, 0.35); }
+  .slot-cell { font-weight: 700; color: var(--primary-strong); }
+  tbody tr.row-pending,
+  tbody tr.row-pending:nth-child(even) {
+    background: rgba(245, 124, 0, 0.11);
+    border-left: 3px solid var(--warn);
+  }
+  tbody tr.row-pending:hover,
+  tbody tr.row-pending:nth-child(even):hover {
+    background: rgba(245, 124, 0, 0.19);
+  }
+
+  tfoot td {
+    background: rgba(187, 222, 251, 0.5); padding: 12px 14px; font-weight: 700;
+    border-top: 2px solid var(--border-strong); font-size: 16px;
+    color: var(--text);
+    backdrop-filter: blur(10px);
+  }
+  tfoot td.num { font-family: 'JetBrains Mono', monospace; text-align: center; color: var(--primary-strong); }
+
+  .empty-state, .error-state {
+    padding: 50px 40px; text-align: center; color: var(--text-muted);
+  }
+  .empty-state h3 { font-size: 18px; margin-bottom: 6px; color: var(--text); }
+  .error-state { color: var(--error); }
+  .error-state pre {
+    font-family: 'JetBrains Mono', monospace; font-size: 15px;
+    margin-top: 8px; white-space: pre-wrap; word-break: break-word;
+    text-align: left; background: rgba(255,255,255,0.6); padding: 12px; border-radius: 8px;
+    border: 1px solid var(--border); color: var(--text-muted);
+  }
+
+  /* Advanced section */
+  .advanced {
+    margin-top: 16px;
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+  }
+  .advanced-head {
+    padding: 14px 16px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 600; color: var(--text);
+    user-select: none;
+  }
+  .advanced-head:hover { color: var(--primary); }
+  .advanced-head .arrow { transition: transform .2s; color: var(--primary); }
+  .advanced.open .advanced-head .arrow { transform: rotate(90deg); }
+  .advanced-body { display: none; padding: 0 16px 16px; }
+  .advanced.open .advanced-body { display: block; }
+  textarea.code {
+    width: 100%; min-height: 140px; resize: vertical;
+    background: rgba(255,255,255,0.75); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 15px;
+    line-height: 1.5;
+    transition: all .15s;
+  }
+  textarea.code:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); background: #fff; }
+
+  /* Slide-out detail panel */
+  .slide-overlay {
+    position: fixed; inset: 0; z-index: 400;
+    background: rgba(13, 59, 102, 0.25);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    opacity: 0; visibility: hidden; transition: all .25s ease;
+  }
+  .slide-overlay.show { opacity: 1; visibility: visible; }
+
+  .slide-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 560px; max-width: 95vw; z-index: 410;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-left: 1px solid rgba(255,255,255,0.6);
+    box-shadow: -20px 0 60px rgba(2, 119, 189, 0.18);
+    transform: translateX(100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column;
+  }
+  .slide-panel.show { transform: translateX(0); }
+
+  .slide-head {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.4);
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .slide-head .head-main { flex: 1; min-width: 0; }
+  .slide-head .head-hn {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    color: var(--primary); font-size: 17px;
+  }
+  .slide-head .head-name {
+    font-size: 20px; font-weight: 700; color: var(--text);
+    margin-top: 2px; word-break: break-word;
+  }
+  .slide-head .head-sub {
+    font-size: 14px; color: var(--text-muted); margin-top: 4px;
+  }
+  .slide-head .close-x {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: rgba(255,255,255,0.6); color: var(--text-muted);
+    cursor: pointer; font-size: 20px; line-height: 1; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .slide-head .close-x:hover { background: var(--error-bg); color: var(--error); }
+
+  .slide-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(227, 242, 253, 0.4);
+  }
+  .slide-stat {
+    text-align: center; padding: 8px 4px;
+    background: rgba(255,255,255,0.6); border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .slide-stat .v { font-size: 13px; font-weight: 700; color: var(--primary); line-height: 1.3; min-height: 24px; display: flex; align-items: center; justify-content: center; }
+  .slide-stat .v .pill-mini { font-size: 12px; padding: 2px 7px; }
+  .slide-stat .l { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ---- 4 ส่วนใน panel รายละเอียด ---- */
+  .detail-section {
+    background: rgba(255,255,255,0.7); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+  }
+  .detail-section .ds-title {
+    font-size: 15px; font-weight: 700; color: var(--primary-strong);
+    padding: 10px 14px; background: rgba(205,224,243,0.4);
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-section .ds-content { padding: 12px 14px; }
+  .ds-empty { color: var(--text-muted); font-size: 14px; font-style: italic; padding: 4px 0; }
+  .ds-empty.err { color: var(--error); font-style: normal; }
+  .ds-row { display: flex; gap: 10px; padding: 4px 0; font-size: 14px; }
+  .ds-row .k { color: var(--text-muted); min-width: 110px; flex-shrink: 0; }
+  .ds-row .v { flex: 1; word-break: break-word; color: var(--text); }
+  .vital-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 6px; margin-bottom: 10px;
+  }
+  .vital {
+    text-align: center; background: rgba(227,242,253,0.5);
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 3px;
+  }
+  .vital .vl { font-size: 11px; color: var(--text-muted); }
+  .vital .vv { font-size: 15px; font-weight: 700; color: var(--text); }
+  table.result-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.result-tbl th {
+    background: rgba(187,222,251,0.4); color: var(--primary-strong);
+    text-align: left; padding: 5px 8px; font-size: 12px; font-weight: 700;
+    border-bottom: 1px solid var(--border);
+  }
+  table.result-tbl td { padding: 5px 8px; border-bottom: 1px solid rgba(157,184,214,0.2); color: var(--text); }
+  table.result-tbl td.code { font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600; }
+  table.result-tbl td.rv { font-weight: 700; }
+  table.result-tbl td.norm { color: var(--text-muted); font-size: 12px; }
+  table.result-tbl tr.res-abn td.rv { color: var(--warn); }
+  table.result-tbl tr.lab-grp-row td {
+    background: rgba(205, 224, 243, 0.55); font-weight: 700; color: var(--primary-strong);
+    font-size: 12px; padding: 6px 8px; border-top: 1px solid var(--border-strong);
+    border-bottom: 1px solid var(--border);
+  }
+  table.result-tbl tr.lab-grp-row .lg-count { color: var(--text-muted); font-weight: 400; }
+  table.result-tbl tr.res-crit { background: var(--error-bg); }
+  table.result-tbl tr.res-crit td.rv { color: var(--error); }
+  table.result-tbl .pend-txt { color: var(--text-muted); font-weight: 400; font-style: italic; }
+  table.result-tbl .flag { font-weight: 700; }
+  table.result-tbl .flag.c { color: var(--error); }
+  .xray-item { padding: 8px 0; border-bottom: 1px dashed var(--border); }
+  .xray-item:last-child { border-bottom: none; }
+  .xray-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .xray-name { font-weight: 600; color: var(--text); font-size: 14px; }
+  .xray-report {
+    margin-top: 6px; font-size: 13px; color: var(--text-muted);
+    background: rgba(227,242,253,0.4); border-radius: 8px; padding: 8px 10px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .dx-note { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .ds-subtitle { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 10px 0 6px; }
+  .doc-note {
+    font-size: 13px; color: var(--text); line-height: 1.5;
+    background: rgba(227,242,253,0.4); border-left: 3px solid var(--primary);
+    border-radius: 6px; padding: 8px 10px; margin-bottom: 6px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .med-item { padding: 7px 0; border-bottom: 1px dashed var(--border); }
+  .med-item:last-child { border-bottom: none; }
+  .med-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .med-name .med-str { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .med-sub { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; font-size: 13px; }
+  .med-usage { color: var(--primary-strong); }
+  .med-qty { color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+  .slide-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+  .slide-empty {
+    padding: 60px 20px; text-align: center; color: var(--text-muted);
+  }
+  .slide-empty .spinner {
+    width: 32px; height: 32px; margin: 0 auto 12px; display: block;
+    border-width: 3px; border-color: var(--border); border-top-color: var(--primary);
+  }
+
+  .order-card {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(2,119,189,0.06);
+    transition: all .15s;
+  }
+  .order-card:hover { box-shadow: 0 4px 12px rgba(2,119,189,0.12); border-color: var(--border-strong); }
+  .order-card-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .order-card-head .ord-no {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    color: var(--primary-strong); font-size: 15px;
+  }
+  .order-card-head .spacer { flex: 1; }
+  .order-card-head .date {
+    font-size: 14px; color: var(--text-muted);
+  }
+  .order-card-body {
+    font-size: 15px; color: var(--text); line-height: 1.5;
+  }
+  .order-card-body .row {
+    display: flex; gap: 10px; padding: 3px 0;
+  }
+  .order-card-body .row .k {
+    color: var(--text-muted); min-width: 110px; font-size: 14px;
+  }
+  .order-card-body .row .v { flex: 1; word-break: break-word; }
+  .order-card-status {
+    display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .pill-mini {
+    font-size: 13px; padding: 3px 10px; border-radius: 10px; font-weight: 600;
+    border: 1px solid transparent;
+  }
+  .pill-mini.ok { background: var(--success-bg); color: var(--success); border-color: rgba(0,137,123,.3); }
+  .pill-mini.wait { background: var(--warn-bg); color: var(--warn); border-color: rgba(245,124,0,.3); }
+  .pill-mini.no { background: var(--error-bg); color: var(--error); border-color: rgba(211,47,47,.3); }
+  .pill-mini.info { background: var(--primary-glow); color: var(--primary); border-color: rgba(2,136,209,.3); }
+
+  .items-section {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px dashed var(--border-strong);
+  }
+  .items-title {
+    font-size: 13px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  table.items-tbl {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  table.items-tbl th {
+    background: rgba(187,222,251,0.4); color: var(--primary-strong);
+    text-align: left; padding: 5px 8px; font-size: 13px; font-weight: 700;
+    border-bottom: 1px solid var(--border);
+  }
+  table.items-tbl th.num { text-align: right; }
+  table.items-tbl td {
+    padding: 5px 8px; border-bottom: 1px solid rgba(144,202,249,0.2);
+    color: var(--text);
+  }
+  table.items-tbl td.code {
+    font-family: 'JetBrains Mono', monospace; color: var(--primary);
+    font-weight: 600; font-size: 13px;
+  }
+  table.items-tbl td.num {
+    text-align: right; font-family: 'JetBrains Mono', monospace;
+  }
+  table.items-tbl tr:last-child td { border-bottom: none; }
+  .items-empty {
+    font-size: 14px; color: var(--text-muted); font-style: italic; padding: 4px 0;
+  }
+
+  /* Make rows clickable */
+  tbody tr { cursor: pointer; }
+  tbody tr.selected, tbody tr.selected:hover {
+    background: rgba(47, 109, 179, 0.18) !important;
+    box-shadow: inset 4px 0 0 var(--primary);
+  }
+
+  /* Toast */
+  .toast-wrap {
+    position: fixed; top: 14px; right: 14px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 16px; font-size: 16px;
+    box-shadow: 0 8px 24px rgba(2, 119, 189, 0.18);
+    min-width: 240px; color: var(--text);
+    transform: translateX(110%); transition: transform .25s ease;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.ok { border-left: 4px solid var(--success); color: var(--success); }
+  .toast.err { border-left: 4px solid var(--error); color: var(--error); }
+  .toast.info { border-left: 4px solid var(--primary); color: var(--primary); }
+
+  .spinner {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px;
+    margin-right: 4px;
+  }
+  .btn.secondary .spinner { border-color: var(--border); border-top-color: var(--primary); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo-shield">L</div>
+  <h1>BMS <span>Lab Status</span></h1>
+  <div class="header-spacer"></div>
+  <div class="conn-badge" id="connBadge" onclick="openSettings()" style="cursor:pointer;" title="คลิกเพื่อตั้งค่า">
+    <span class="dot"></span><span id="connText">Not Connected</span>
+  </div>
+  <div class="notif-wrap">
+    <button class="icon-btn" id="notifBell" onclick="toggleNotifPanel(event)" title="แจ้งเตือนผล Lab/X-ray">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+    </button>
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-head">
+        <span class="np-title">🔔 แจ้งเตือนผล</span>
+        <label class="np-tg"><input type="checkbox" id="notifSound" onchange="setNotifSound()"> 🔊 เสียง</label>
+        <label class="np-tg"><input type="checkbox" id="notifDesktop" onchange="setNotifDesktop()"> 🖥️ Desktop</label>
+        <button class="np-clear" onclick="clearNotifs()">ล้าง</button>
+      </div>
+      <div class="notif-list" id="notifList"><div class="notif-empty">ยังไม่มีการแจ้งเตือน</div></div>
+    </div>
+  </div>
+  <button class="icon-btn" id="settingsBtn" onclick="openSettings()" title="ตั้งค่า BMS Session ID">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+  <a class="home-link" href="../index.html">&larr; Hub</a>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop" id="settingsModal" onclick="if(event.target===this) closeSettings()">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>ตั้งค่า BMS Session</h2>
+      <button class="close-x" onclick="closeSettings()" title="ปิด">&times;</button>
+    </div>
+
+    <div class="modal-current" id="modalCurrent">
+      <div class="label">เชื่อมต่อปัจจุบัน</div>
+      <div class="value" id="modalCurrentText">-</div>
+    </div>
+
+    <label class="field-label" for="sessionId">BMS Session ID</label>
+    <input type="text" id="sessionId" class="field-input" placeholder="วาง BMS Session ID..."
+           spellcheck="false" autocomplete="off"
+           onkeydown="if(event.key==='Enter') handleConnect()">
+    <div class="modal-hint">
+      Session ID ถูกบันทึกไว้ใน cookie ของเบราว์เซอร์ (อายุ 7 วัน)
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeSettings()">ยกเลิก</button>
+      <button class="btn" id="connectBtn" onclick="handleConnect()">Connect Session</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>วันที่เริ่มต้น (วันที่ Visit)</label>
+      <input type="date" id="filterStart" onkeydown="if(event.key==='Enter') runQuery()">
+    </div>
+    <div class="filter-group">
+      <label>วันที่สิ้นสุด</label>
+      <input type="date" id="filterEnd" onkeydown="if(event.key==='Enter') runQuery()">
+    </div>
+    <div class="filter-group">
+      <label>HN (กรอก)</label>
+      <input type="text" id="filterHn" placeholder="ทั้งหมด" style="min-width:120px;"
+             onkeydown="if(event.key==='Enter'){ normalizeHnInput(); runQuery(); }"
+             onblur="normalizeHnInput()">
+    </div>
+    <div class="filter-spacer"></div>
+    <button class="btn success" id="runBtn" onclick="runQuery()" disabled>
+      <span id="runBtnText">โหลดข้อมูล</span>
+    </button>
+    <button class="btn secondary" onclick="exportCsv()">Export CSV</button>
+  </div>
+
+  <!-- Summary cards (funnel 4 ขั้น) -->
+  <div class="cards" id="summaryCards">
+    <div class="card blue">
+      <div class="card-label">จำนวนคนไข้</div>
+      <div class="card-value" id="sumPatient">-</div>
+      <div class="card-sub">Visit ทั้งหมด</div>
+    </div>
+    <div class="card green">
+      <div class="card-label">ซักประวัติ (Nurse)</div>
+      <div class="card-value" id="sumNurse">-</div>
+      <div class="card-sub" id="sumNurseSub">-</div>
+    </div>
+    <div class="card orange">
+      <div class="card-label">พบแพทย์ (Doctor)</div>
+      <div class="card-value" id="sumDoctor">-</div>
+      <div class="card-sub" id="sumDoctorSub">-</div>
+    </div>
+    <div class="card purple">
+      <div class="card-label">ผล Lab</div>
+      <div class="card-value" id="sumLab">-</div>
+      <div class="card-sub" id="sumLabSub">-</div>
+    </div>
+    <div class="card pink">
+      <div class="card-label">ผล X-ray</div>
+      <div class="card-value" id="sumXray">-</div>
+      <div class="card-sub" id="sumXraySub">-</div>
+    </div>
+  </div>
+
+  <!-- คอขวดต่อห้องตรวจ (ซ่อน/แสดงได้) -->
+  <div class="bottleneck" id="bottleneckBar" style="display:none;">
+    <button type="button" class="bn-title" onclick="toggleBottleneck()" title="ซ่อน/แสดง">
+      <span class="bn-arrow">▾</span> 🔺 คอขวดต่อห้อง <span class="bn-count" id="bottleneckCount"></span>
+    </button>
+    <div class="bn-list" id="bottleneckList"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="result-wrap">
+    <div class="result-toolbar">
+      <span class="pill">รวม <strong id="rowCount">0</strong> HN</span>
+      <span class="pill" id="elapsedPill" style="display:none">เวลา <strong id="elapsedTime">-</strong></span>
+      <span class="pill" id="autoCountdownPill" style="display:none">รีเฟรชใน <strong id="autoCountdown">-</strong></span>
+      <button type="button" id="pendingToggle" class="btn secondary pending-toggle" onclick="togglePendingOnly()">🔴 เฉพาะที่ค้าง</button>
+      <div class="filter-spacer"></div>
+      <select id="autoRefresh" class="table-search" onchange="setAutoRefresh()" style="min-width:140px;">
+        <option value="0">รีเฟรช: ปิด</option>
+        <option value="30">รีเฟรช 30 วิ</option>
+        <option value="60">รีเฟรช 1 นาที</option>
+        <option value="120">รีเฟรช 2 นาที</option>
+        <option value="300" selected>รีเฟรช 5 นาที</option>
+        <option value="600">รีเฟรช 10 นาที</option>
+        <option value="1800">รีเฟรช 30 นาที</option>
+      </select>
+      <select id="filterRoom" class="table-search" onchange="filterTable()" style="min-width:160px;">
+        <option value="">ห้องตรวจ: ทั้งหมด</option>
+      </select>
+      <select id="filterPttype" class="table-search" onchange="filterTable()" style="min-width:160px;">
+        <option value="">สิทธิ: ทั้งหมด</option>
+      </select>
+      <input type="text" class="table-search" id="tableSearch" placeholder="ค้นหา HN / ชื่อ..." oninput="filterTable()">
+    </div>
+    <div class="table-scroll" id="tableWrap">
+      <div class="empty-state">
+        <h3>ยังไม่มีข้อมูล</h3>
+        <div>โปรด Connect Session, เลือกช่วงวันที่ แล้วคลิก "โหลดข้อมูล"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced (hidden) -->
+  <div class="advanced" id="advancedBox" style="display:none;">
+    <div class="advanced-head" onclick="toggleAdvanced()">
+      <span class="arrow">&#9656;</span>
+      <span>Advanced - SQL Source &amp; Custom Order Numbers</span>
+    </div>
+    <div class="advanced-body">
+      <div style="margin-bottom:8px; font-size:15px; color:var(--text-muted);">
+        คิวรี่ทะเบียนคนไข้ (กรองด้วย <code>:visit_filter</code> — ช่วง <code>v.vstdate</code> + HN):
+      </div>
+      <textarea class="code" id="sqlSource" spellcheck="false"></textarea>
+
+      <div style="margin: 12px 0 6px; font-size:15px; color:var(--text-muted);">
+        วาง <strong>lab_order_number</strong> (คั่นด้วย comma) เพื่อ override ช่วงวันที่ - เว้นว่างเพื่อใช้ช่วงวันที่ปกติ:
+      </div>
+      <textarea class="code" id="customOrders" spellcheck="false" placeholder="10012927,10012386,10012394,..." style="min-height:80px;"></textarea>
+
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn secondary" onclick="loadSampleOrders()">โหลด Order Number ตัวอย่าง (700+ รายการ)</button>
+        <button class="btn secondary" onclick="clearCustomOrders()">เคลียร์ Order Number</button>
+        <button class="btn secondary" onclick="resetSql()">รีเซ็ต SQL</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Slide-out detail panel -->
+<div class="slide-overlay" id="slideOverlay" onclick="closeDetail()"></div>
+<div class="slide-panel" id="slidePanel">
+  <div class="slide-head">
+    <div class="head-main">
+      <div class="head-hn" id="detailHn">-</div>
+      <div class="head-name" id="detailName">-</div>
+      <div class="head-sub" id="detailSub">-</div>
+    </div>
+    <button class="close-x" onclick="closeDetail()" title="ปิด (Esc)">&times;</button>
+  </div>
+  <div class="slide-stats">
+    <div class="slide-stat"><div class="v" id="detailStat1">-</div><div class="l">ซักประวัติ</div></div>
+    <div class="slide-stat"><div class="v" id="detailStat2">-</div><div class="l">Lab</div></div>
+    <div class="slide-stat"><div class="v" id="detailStat3">-</div><div class="l">X-ray</div></div>
+    <div class="slide-stat"><div class="v" id="detailStat4">-</div><div class="l">แพทย์</div></div>
+  </div>
+  <div class="slide-body" id="detailBody">
+    <div class="slide-empty">เลือกแถวคนไข้เพื่อดูรายละเอียด</div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ====== Config ======
+const SESSION_COOKIE = 'bms-session-id';
+const COOKIE_DAYS = 7;
+const URL_PARAM = 'bms-session-id';
+const DEFAULT_TIMEOUT = 60000;
+const APP_NAME = 'BMS.Lab.Status';
+
+// เกณฑ์เตือน (นาที) เกินแล้วเด้งแดง — ปรับได้ตามนโยบายคลินิก
+//   nurse/doctor = นับจากเวลามาถึง (vsttime)
+//   lab   = นับจากเวลารับ lab (receive) → รายงานผล
+//   xray  = นับจากเวลารับตัว (accept) → ฉายรังสี
+const SLA_MIN = { nurse: 30, doctor: 60, lab: 60, xray: 30 };
+
+const DEFAULT_SQL = `select
+  v.vn,
+  v.hn,
+  max(v.main_dep) as room_code,
+  max(kk.department) as room_name,
+  max((select min(qs.queue_slot_number) from oapp oa
+        join opd_qs_slot qs on qs.opd_qs_slot_id = oa.opd_qs_slot_id
+        where oa.visit_vn = v.vn)) as qs_slot,
+  max(v.vstdate) as vstdate,
+  max(v.vsttime) as vsttime,
+  max(v.oqueue) as qn,
+  max(py.name) as pttype_name,
+  count(h.lab_order_number) as cc_order,
+  sum(case when coalesce(h.lab_receive,'N') = 'Y' then 1 else 0 end) as cc_receive,
+  sum(case when coalesce(h.confirm_report,'N') = 'Y' or h.report_date is not null then 1 else 0 end) as cc_report,
+  sum(case when coalesce(h.finance_lab_clear,'N') = 'Y' then 1 else 0 end) as cc_paid,
+  count(h.lab_order_number) as cc_total
+from ovst v
+  left outer join pttype py on py.pttype = v.pttype
+  left outer join kskdepartment kk on kk.depcode = v.main_dep
+  left outer join lab_head h on h.vn = v.vn
+    and exists (select 1 from lab_order_service los where los.lab_order_number = h.lab_order_number)
+where :visit_filter
+group by v.vn, v.hn
+order by qs_slot nulls last, vsttime`;
+
+// ชื่อคนไข้ดึงแยกเป็นคิวรี่ง่าย ๆ ต่อชื่อใน SQL — ถ้าฝัง concat ไว้ในคิวรี่หลัก (มี join/group by)
+// /api/sql จะคืนภาษาไทยเพี้ยน (วิธีเดียวกับ Doctor-Note-appointment/appointment-register.html)
+const NAMES_SQL = `select hn, pname || fname || ' ' || lname as pt_name
+from patient where hn in (:hn_list)`;
+
+// สถานะคลินิก (XRAY / Nurse / Doctor) ต่อ visit — แยกคิวรี่ merge ด้วย vn กันคิวรี่หลักยาว
+// XRAY: xray_head(สั่ง) → xray_report(ผล) · Nurse: opdscreen(cc/bpd) · Doctor: ovstdiag(ลงวินิจฉัย)
+const CLINICAL_SQL = `select v.vn,
+  (case when exists(select 1 from xray_report xr where xr.vn = v.vn) or exists(select 1 from xray_head xh where xh.vn = v.vn) then 1 else 0 end) as xray_order,
+  (case when exists(select 1 from xray_report xr where xr.vn = v.vn and (xr.report_date is not null or coalesce(xr.confirm_radiology,'N') = 'Y')) then 1 else 0 end) as xray_report,
+  (case when exists(select 1 from opdscreen os where os.vn = v.vn and (coalesce(os.cc,'') <> '' or os.bpd is not null)) then 1 else 0 end) as nurse_done,
+  (case when exists(select 1 from ovstdiag od where od.vn = v.vn) then 1 else 0 end) as doctor_done,
+  (select min(case when coalesce(h.lab_receive,'N') = 'Y' and h.receive_time is not null
+                   then h.receive_date || 'T' || h.receive_time
+                   else h.order_date || 'T' || h.order_time end) from lab_head h
+    where h.vn = v.vn and coalesce(h.confirm_report,'N') <> 'Y' and h.report_date is null
+      and exists(select 1 from lab_order_service los where los.lab_order_number = h.lab_order_number)) as lab_wait_since,
+  (select min(case when coalesce(xr.confirm,'N') = 'Y' and xr.accept_date is not null
+                   then xr.accept_date || 'T' || xr.accept_time
+                   else xr.request_date || 'T' || xr.request_time end) from xray_report xr
+    where xr.vn = v.vn and coalesce(xr.confirm_radiology,'N') <> 'Y' and xr.report_date is null) as xray_wait_since
+from ovst v where :visit_filter`;
+
+// ผล Lab ผิดปกติ/วิกฤต ต่อ visit — แยกคิวรี่ กัน CLINICAL_SQL ยาวเกิน URL cap (~2048)
+const LABFLAG_SQL = `select v.vn,
+  (select count(*) from lab_head h2 join lab_order lo on lo.lab_order_number = h2.lab_order_number
+    where h2.vn = v.vn and coalesce(lo.abnormal_result,'N') = 'Y' and trim(coalesce(lo.lab_order_result,'')) <> '') as lab_abn,
+  (select count(*) from lab_head h2 join lab_order lo on lo.lab_order_number = h2.lab_order_number
+    where h2.vn = v.vn and coalesce(lo.critical_result,'N') = 'Y' and trim(coalesce(lo.lab_order_result,'')) <> '') as lab_crit
+from ovst v where :visit_filter`;
+
+// เวลา total (รับ->ผล) ของ Lab/Xray ที่เสร็จ — แยกคิวรี่ (render-only ไม่ใช้ตรวจจับ) กัน URL ยาว
+const TOTALS_SQL = `select v.vn,
+  (select min(h.receive_date || 'T' || h.receive_time) from lab_head h
+    where h.vn = v.vn and (coalesce(h.confirm_report,'N') = 'Y' or h.report_date is not null)
+      and coalesce(h.lab_receive,'N') = 'Y' and h.receive_time is not null) as lab_done_recv,
+  (select max(h.report_date || 'T' || h.report_time) from lab_head h
+    where h.vn = v.vn and (coalesce(h.confirm_report,'N') = 'Y' or h.report_date is not null) and h.report_time is not null) as lab_done_rep,
+  (select min(case when coalesce(xr.confirm,'N') = 'Y' and xr.accept_date is not null
+                   then xr.accept_date || 'T' || xr.accept_time
+                   else xr.request_date || 'T' || xr.request_time end) from xray_report xr
+    where xr.vn = v.vn and (xr.report_date is not null or coalesce(xr.confirm_radiology,'N') = 'Y')) as xray_done_start,
+  (select max(case when xr.report_date is not null and xr.report_time is not null
+                   then xr.report_date || 'T' || xr.report_time
+                   when coalesce(xr.confirm_radiology,'N') = 'Y' and xr.confirm_radiology_date is not null
+                   then xr.confirm_radiology_date || 'T' || xr.confirm_radiology_time else null end) from xray_report xr
+    where xr.vn = v.vn and (xr.report_date is not null or coalesce(xr.confirm_radiology,'N') = 'Y')) as xray_done_end
+from ovst v where :visit_filter`;
+
+// รายการ Lab/Xray ต่อ visit (ตามวันสั่ง) — เขียว=รายงานผลแล้ว, แดง=ยังไม่มีผล
+// Lab: lab_order_service (ผลระดับใบสั่ง lab_head.confirm_report/report_date)
+const LAB_ITEMS_SQL = `select h.vn as vn, los.lab_code as code, los.lab_name as name,
+  (case when coalesce(h.confirm_report,'N') = 'Y' or h.report_date is not null then 1 else 0 end) as reported
+from lab_head h
+  join lab_order_service los on los.lab_order_number = h.lab_order_number
+where h.order_date between ':d1' and ':d2'
+order by h.vn, los.lab_code`;
+// Xray: รายการ+ สถานะผล อยู่ที่ xray_report (มี vn + xray_items_code + report_date) · ชื่อจาก xray_items
+// reported = report_date is not null (มีรายงานผลแล้ว)
+const XRAY_ITEMS_SQL = `select xr.vn as vn, cast(xr.xray_items_code as varchar) as code,
+  coalesce(xi.xray_items_name, cast(xr.xray_items_code as varchar)) as name,
+  (case when xr.report_date is not null or coalesce(xr.confirm_radiology,'N') = 'Y' then 1 else 0 end) as reported
+from xray_report xr
+  left outer join xray_items xi on xi.xray_items_code = xr.xray_items_code
+where xr.vn in (select v.vn from ovst v where v.vstdate between ':d1' and ':d2')
+order by xr.vn`;
+
+const EDC_SUM_SQL = `select h.hn, count(*) as n
+from lab_head h
+  join rcpt_debt rd on rd.vn = h.vn and rd.debt_date = h.order_date
+where :order_filter
+  and coalesce(nullif(rd.sss_approval_code,''),'0')::bigint > 1
+  and exists (select 1 from lab_order_service los where los.lab_order_number = h.lab_order_number)
+group by h.hn`;
+
+const RCPT_SUM_SQL = `select h.hn, count(*) as n
+from lab_head h
+  join rcpt_print rp on rp.vn = h.vn and rp.bill_date = h.order_date and rp.status = 'OK'
+where :order_filter
+  and exists (select 1 from lab_order_service los where los.lab_order_number = h.lab_order_number)
+group by h.hn`;
+
+// ====== State ======
+let sessionConnected = false;
+let connectionConfig = null;
+let userInfo = null;
+let lastData = [];
+let filteredData = [];
+let flashCells = new Set();     // "vn:col" ที่เพิ่งเปลี่ยนเป็นเสร็จ (วาบเขียว)
+let prevStatusSnap = null;      // snapshot สถานะรอบก่อน ไว้เทียบหาความเปลี่ยนแปลง
+let prevAbnSnap = null;         // snapshot ผลผิดปกติรอบก่อน (แยกคิวรี่ LABFLAG)
+let pendingOnly = false;        // ปุ่ม "เฉพาะที่ค้าง"
+let bottleneckCollapsed = false; // พับ/กาง คอขวดต่อห้อง
+const BOTTLENECK_COOKIE = 'lab_bottleneck_collapsed';
+
+// ===== แจ้งเตือนผล Lab/X-ray =====
+let notifLog = [];          // ประวัติแจ้งเตือน (session นี้) ใหม่สุดขึ้นก่อน
+let notifUnseen = 0;        // จำนวนที่ยังไม่เปิดดู (badge)
+let notifSoundOn = true;    // เสียงเตือน
+let notifDesktopOn = false; // desktop notification
+let notifAudioCtx = null;
+const NOTIF_SOUND_COOKIE = 'lab_notif_sound';
+const NOTIF_DESKTOP_COOKIE = 'lab_notif_desktop';
+const BASE_TITLE = 'BMS Lab Status';
+
+// ====== Helpers ======
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function minifySql(sql) {
+  return sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+}
+function showToast(type, msg) {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 3500);
+}
+function setCookie(name, val, days) {
+  const exp = new Date(Date.now() + days * 864e5).toUTCString();
+  const sec = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${encodeURIComponent(val)}; expires=${exp}; path=/${sec}; SameSite=Lax`;
+}
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function removeCookie(name) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
+
+// ====== Detail Slide Panel ======
+// 4 คิวรี่ต่อ visit (คีย์ด้วย :vn)
+const NURSE_SQL = `select cc, symptom, hpi, pe, note,
+  bps, bpd, pulse, hr, rr, temperature, bw, height, bmi, spo2, o2sat, pain_score, waist,
+  vsttime, begintime
+from opdscreen where vn = ':vn' order by vsttime desc limit 1`;
+
+// ผล Lab: แยกกลุ่ม (lab_items_sub_group ผ่าน lab_items master) + เรียงตาม lab_items.display_order
+const LABRESULT_SQL = `select lo.lab_items_name_ref as name, lo.lab_order_result as result,
+  lo.lab_items_normal_value_ref as normal, lo.abnormal_result as abn, lo.critical_result as crit,
+  coalesce(sg.lab_items_sub_group_name, '') as grp,
+  coalesce(li.display_order, 999999) as dord
+from lab_head h
+  join lab_order lo on lo.lab_order_number = h.lab_order_number
+  left outer join lab_items li on li.lab_items_code = lo.lab_items_code
+  left outer join lab_items_sub_group sg on sg.lab_items_sub_group_code = li.lab_items_sub_group_code
+where h.vn = ':vn'
+  and lo.lab_order_result is not null and trim(lo.lab_order_result) <> ''
+order by dord, lo.lab_items_name_ref`;
+
+const XRAYRESULT_SQL = `select coalesce(xi.xray_items_name, cast(xr.xray_items_code as varchar)) as name,
+  xr.report_text as report, xr.report_date as rdate, xr.normal as normal, xr.confirm_radiology as confrad
+from xray_report xr
+  left outer join xray_items xi on xi.xray_items_code = xr.xray_items_code
+where xr.vn = ':vn'
+order by xr.request_date`;
+
+const DIAG_SQL = `select od.icd10 as icd10, od.diagtype as diagtype, od.dx_code_note as dx_note,
+  coalesce(i.name, '') as dx_name, d.name as doctor_name
+from ovstdiag od
+  left outer join icd101 i on i.code = od.icd10
+  left outer join doctor d on d.code = od.doctor
+where od.vn = ':vn'
+order by od.diagtype, od.diag_no`;
+
+// Doctor note (patient_visit_doctor_note) — ต่อ visit
+const DOCNOTE_SQL = `select doctor_note_text as note, note_datetime as dt
+from patient_visit_doctor_note where vn = ':vn' order by note_datetime`;
+
+// ยา: opitemrece ⋈ drugitems (ชื่อยา) ⋈ drugusage (วิธีใช้ name1/2/3 — ดึงแยกคอลัมน์ ต่อใน JS กันไทยเพี้ยน)
+const MED_SQL = `select d.name as drug, d.strength as strength, o.qty as qty, d.units as units,
+  du.name1 as u1, du.name2 as u2, du.name3 as u3
+from opitemrece o
+  join drugitems d on d.icode = o.icode
+  left outer join drugusage du on du.drugusage = o.drugusage
+where o.vn = ':vn'
+order by o.item_no`;
+
+let currentDetailHn = null;
+let currentDetailVn = null;
+let currentDetailPttype = '';
+
+async function detailFetch(template, vn, suffix) {
+  const sql = template.replace(/:vn/g, String(vn).replace(/'/g, "''"));
+  const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.' + suffix)}`;
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` }, signal: ctl.signal });
+    clearTimeout(tid);
+    const j = await res.json();
+    if (j.MessageCode !== 200) { console.warn(`detail ${suffix} failed`, j.Message); return { ok: false, err: j.Message, data: [] }; }
+    return { ok: true, data: j.data || [] };
+  } catch (e) { console.warn(`detail ${suffix} error`, e); return { ok: false, err: e.message, data: [] }; }
+}
+
+async function openDetail(row) {
+  if (!sessionConnected) return;
+  closeSettings();
+
+  currentDetailHn = row.hn;
+  currentDetailVn = row.vn;
+  currentDetailPttype = row.pttype_name || '';
+  document.getElementById('detailHn').textContent = row.hn || '-';
+  document.getElementById('detailName').textContent = row.pt_name || '-';
+  document.getElementById('detailSub').textContent =
+    `${row.pttype_name || 'ไม่ระบุสิทธิ'} · ห้อง ${row.room_name || '-'}`;
+
+  // แถบสถานะย่อ 4 ช่อง (ใช้ข้อมูลจากแถว ไม่ต้องคิวรี่)
+  const badge = (done, txt) => `<span class="pill-mini ${done ? 'ok' : 'wait'}">${done ? '✓ ' : ''}${escHtml(txt)}</span>`;
+  const nurseDone = Number(row.nurse_done || 0) > 0;
+  const doctorDone = Number(row.doctor_done || 0) > 0;
+  const cOrder = Number(row.cc_order || 0), cReport = Number(row.cc_report || 0);
+  const xo = Number(row.xray_order || 0) > 0, xr = Number(row.xray_report || 0) > 0;
+  document.getElementById('detailStat1').innerHTML = badge(nurseDone, nurseDone ? 'ซักแล้ว' : 'รอซัก');
+  document.getElementById('detailStat2').innerHTML = cOrder === 0 ? '<span class="pill-mini">ไม่มีสั่ง</span>' : badge(cReport >= cOrder, `${cReport}/${cOrder}`);
+  document.getElementById('detailStat3').innerHTML = !xo ? '<span class="pill-mini">ไม่มีสั่ง</span>' : badge(xr, xr ? 'มีผล' : 'รอผล');
+  document.getElementById('detailStat4').innerHTML = badge(doctorDone, doctorDone ? 'ตรวจแล้ว' : 'รอตรวจ');
+
+  // Mark selected row
+  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected'));
+  document.querySelectorAll('tbody tr').forEach(tr => {
+    if (tr.dataset.hn && tr.dataset.hn === String(row.hn)) tr.classList.add('selected');
+  });
+
+  document.getElementById('slideOverlay').classList.add('show');
+  document.getElementById('slidePanel').classList.add('show');
+  const body = document.getElementById('detailBody');
+  body.innerHTML = `<div class="slide-empty"><span class="spinner"></span>กำลังโหลด...</div>`;
+
+  if (!row.vn) { body.innerHTML = `<div class="slide-empty">ไม่มี VN สำหรับดึงรายละเอียด</div>`; return; }
+
+  const [nurse, lab, xray, diag, docnote, med] = await Promise.all([
+    detailFetch(NURSE_SQL, row.vn, 'Nurse'),
+    detailFetch(LABRESULT_SQL, row.vn, 'LabResult'),
+    detailFetch(XRAYRESULT_SQL, row.vn, 'XrayResult'),
+    detailFetch(DIAG_SQL, row.vn, 'Diag'),
+    detailFetch(DOCNOTE_SQL, row.vn, 'DocNote'),
+    detailFetch(MED_SQL, row.vn, 'Med'),
+  ]);
+  if (currentDetailVn !== row.vn) return;   // คลิกแถวอื่นระหว่างโหลด -> ทิ้ง
+
+  body.innerHTML =
+    renderNurseSection(nurse) +
+    renderLabSection(lab) +
+    renderXraySection(xray) +
+    renderDoctorSection(diag, docnote) +
+    renderMedSection(med);
+}
+
+function dsection(title, inner) {
+  return `<div class="detail-section"><div class="ds-title">${title}</div><div class="ds-content">${inner}</div></div>`;
+}
+function clip(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; }
+
+// ---- 1) ซักประวัติ (opdscreen) ----
+function renderNurseSection(res) {
+  let inner;
+  if (!res.ok) inner = `<div class="ds-empty err">โหลดไม่ได้: ${escHtml(res.err || '')}</div>`;
+  else if (res.data.length === 0) inner = `<div class="ds-empty">ยังไม่ซักประวัติ</div>`;
+  else {
+    const s = res.data[0];
+    const V = [];
+    const bp = (s.bps && s.bpd) ? `${s.bps}/${s.bpd}` : (s.bps || s.bpd || '');
+    if (bp) V.push(['BP', bp]);
+    if (s.pulse || s.hr) V.push(['ชีพจร', s.pulse || s.hr]);
+    if (s.rr) V.push(['RR', s.rr]);
+    if (s.temperature) V.push(['Temp', s.temperature + '°']);
+    if (s.spo2 || s.o2sat) V.push(['SpO₂', (s.spo2 || s.o2sat) + '%']);
+    if (s.bw) V.push(['นน.', s.bw]);
+    if (s.height) V.push(['สูง', s.height]);
+    if (s.bmi) V.push(['BMI', s.bmi]);
+    if (s.waist) V.push(['เอว', s.waist]);
+    if (s.pain_score != null && String(s.pain_score) !== '') V.push(['Pain', s.pain_score]);
+    const kv = [];
+    const cc = s.cc || s.symptom || '';
+    if (cc) kv.push(['อาการสำคัญ', clip(cc, 300)]);
+    if (s.hpi) kv.push(['ประวัติปัจจุบัน', clip(s.hpi, 300)]);
+    if (s.pe) kv.push(['ตรวจร่างกาย', clip(s.pe, 300)]);
+    if (s.note) kv.push(['หมายเหตุ', clip(s.note, 200)]);
+    inner =
+      (V.length ? `<div class="vital-grid">${V.map(([k, v]) => `<div class="vital"><div class="vl">${escHtml(k)}</div><div class="vv">${escHtml(String(v))}</div></div>`).join('')}</div>` : '') +
+      (kv.map(([k, v]) => `<div class="ds-row"><span class="k">${escHtml(k)}</span><span class="v">${escHtml(String(v))}</span></div>`).join('')) +
+      (!V.length && !kv.length ? `<div class="ds-empty">ซักประวัติแล้ว (ไม่มีรายละเอียด)</div>` : '');
+  }
+  return dsection('🩺 การซักประวัติ (Nurse)', inner);
+}
+
+// ---- 2) ผล Lab (lab_order) ----
+function renderLabSection(res) {
+  let inner;
+  if (!res.ok) inner = `<div class="ds-empty err">โหลดไม่ได้: ${escHtml(res.err || '')}</div>`;
+  else if (res.data.length === 0) inner = `<div class="ds-empty">ยังไม่มีผล Lab ที่รายงาน</div>`;
+  else {
+    // จัดกลุ่มตาม grp (ข้อมูลเรียงตาม display_order มาแล้ว → กลุ่มติดกันเป็นบล็อก)
+    const groups = [];
+    const idx = new Map();
+    res.data.forEach(r => {
+      const g = (r.grp && String(r.grp).trim()) ? String(r.grp).trim() : 'อื่นๆ';
+      if (!idx.has(g)) { idx.set(g, groups.length); groups.push({ name: g, items: [] }); }
+      groups[idx.get(g)].items.push(r);
+    });
+    const rowHtml = r => {
+      const has = r.result != null && String(r.result).trim() !== '';
+      const abn = String(r.abn || '').toUpperCase() === 'Y';
+      const crit = String(r.crit || '').toUpperCase() === 'Y';
+      const cls = crit ? 'res-crit' : (abn ? 'res-abn' : '');
+      const val = has ? `${escHtml(String(r.result))}${abn ? ' <span class="flag">⚠</span>' : ''}${crit ? ' <span class="flag c">‼</span>' : ''}` : '<span class="pend-txt">รอผล</span>';
+      return `<tr class="${cls}"><td>${escHtml(r.name || '-')}</td><td class="rv">${val}</td><td class="norm">${escHtml(r.normal || '')}</td></tr>`;
+    };
+    inner = `<table class="result-tbl"><thead><tr><th>รายการ</th><th>ผล</th><th>ค่าปกติ</th></tr></thead><tbody>` +
+      groups.map(g =>
+        `<tr class="lab-grp-row"><td colspan="3">${escHtml(g.name)} <span class="lg-count">(${g.items.length})</span></td></tr>` +
+        g.items.map(rowHtml).join('')
+      ).join('') + `</tbody></table>`;
+  }
+  return dsection('🧪 ผล Lab', inner);
+}
+
+// ---- 3) ผล X-ray (xray_report) ----
+function renderXraySection(res) {
+  let inner;
+  if (!res.ok) inner = `<div class="ds-empty err">โหลดไม่ได้: ${escHtml(res.err || '')}</div>`;
+  else if (res.data.length === 0) inner = `<div class="ds-empty">ไม่มีสั่ง X-ray</div>`;
+  else {
+    inner = res.data.map(r => {
+      const isReported = !!r.rdate;
+      const isFilmed = String(r.confrad || '').toUpperCase() === 'Y';
+      const done = isReported || isFilmed;
+      const label = isReported ? '✓ รายงานผลแล้ว' : (isFilmed ? '✓ ฉายแล้ว' : 'รอผล');
+      let rep = String(r.report || '');
+      if (/\\rtf|\\par|\{\\/.test(rep)) rep = '';   // ตัด RTF ทิ้ง
+      return `<div class="xray-item">
+        <div class="xray-head"><span class="xray-name">📷 ${escHtml(r.name || '-')}</span>
+          <span class="pill-mini ${done ? 'ok' : 'wait'}">${label}</span></div>
+        ${isReported && rep.trim() ? `<div class="xray-report">${escHtml(clip(rep, 500))}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  return dsection('📷 ผล X-ray', inner);
+}
+
+// strip RTF แบบหยาบ ๆ ให้เหลือข้อความอ่านได้
+function stripRtf(s) {
+  s = String(s == null ? '' : s);
+  if (/\\rtf|\\par|\{\\/.test(s)) s = s.replace(/\{\\[^{}]*\}/g, ' ').replace(/\\[a-z]+-?\d* ?/gi, ' ').replace(/[{}]/g, ' ').replace(/[ \t]+/g, ' ');
+  return s.trim();   // เก็บ \n ไว้ (doc-note ใช้ white-space: pre-wrap) — RTF เท่านั้นที่ยุบช่องว่าง
+}
+
+// ---- 4) การตรวจรักษาของแพทย์ (ovstdiag + patient_visit_doctor_note) ----
+function renderDoctorSection(res, noteRes) {
+  const hasDiag = res.ok && res.data.length > 0;
+  const notes = (noteRes && noteRes.ok) ? noteRes.data.map(n => stripRtf(n.note)).filter(Boolean) : [];
+  if (!hasDiag && notes.length === 0) {
+    const msg = res.ok ? 'แพทย์ยังไม่ลงวินิจฉัย' : `โหลดไม่ได้: ${escHtml(res.err || '')}`;
+    return dsection('👨‍⚕️ การตรวจรักษาของแพทย์', `<div class="ds-empty${res.ok ? '' : ' err'}">${msg}</div>`);
+  }
+  const dxType = t => ({ '1': 'หลัก', '2': 'ร่วม', '3': 'แทรกซ้อน', '4': 'อื่นๆ', '5': 'External' }[String(t)] || '');
+  const doctor = hasDiag ? ((res.data.find(r => r.doctor_name) || {}).doctor_name || '') : '';
+  let inner = doctor ? `<div class="ds-row"><span class="k">แพทย์</span><span class="v">${escHtml(doctor)}</span></div>` : '';
+  if (hasDiag) {
+    inner += `<table class="result-tbl"><thead><tr><th>ICD10</th><th>การวินิจฉัย</th><th>ประเภท</th></tr></thead><tbody>` +
+      res.data.map(r => {
+        const note = String(r.dx_note || '').trim();
+        return `<tr><td class="code">${escHtml(r.icd10 || '-')}</td><td>${escHtml(r.dx_name || '')}${note ? `<div class="dx-note">${escHtml(note)}</div>` : ''}</td><td>${escHtml(dxType(r.diagtype))}</td></tr>`;
+      }).join('') + `</tbody></table>`;
+  }
+  if (notes.length) {
+    inner += `<div class="ds-subtitle">📝 Doctor Note</div>` +
+      notes.map(t => `<div class="doc-note">${escHtml(clip(t, 700))}</div>`).join('');
+  }
+  return dsection('👨‍⚕️ การตรวจรักษาของแพทย์', inner);
+}
+
+// ---- 5) ยา (opitemrece ⋈ drugitems ⋈ drugusage) ----
+function renderMedSection(res) {
+  let inner;
+  if (!res.ok) inner = `<div class="ds-empty err">โหลดไม่ได้: ${escHtml(res.err || '')}</div>`;
+  else if (res.data.length === 0) inner = `<div class="ds-empty">ไม่มีรายการยา</div>`;
+  else {
+    inner = res.data.map(m => {
+      const usage = [m.u1, m.u2, m.u3].map(x => String(x || '').trim()).filter(Boolean).join(' ');
+      const qty = m.qty != null && m.qty !== '' ? `${Number(m.qty).toLocaleString()} ${escHtml(m.units || '')}`.trim() : '';
+      return `<div class="med-item">
+        <div class="med-name">💊 ${escHtml(m.drug || '-')}${m.strength ? ` <span class="med-str">${escHtml(m.strength)}</span>` : ''}</div>
+        <div class="med-sub">${usage ? `<span class="med-usage">${escHtml(usage)}</span>` : ''}${qty ? `<span class="med-qty">${qty}</span>` : ''}</div>
+      </div>`;
+    }).join('');
+  }
+  return dsection('💊 ยา (Medication)', inner);
+}
+
+function closeDetail() {
+  document.getElementById('slideOverlay').classList.remove('show');
+  document.getElementById('slidePanel').classList.remove('show');
+  document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected'));
+  currentDetailHn = null;
+  currentDetailVn = null;
+}
+
+// ====== Settings Modal ======
+function openSettings() {
+  const modal = document.getElementById('settingsModal');
+  const cur = document.getElementById('modalCurrent');
+  const curText = document.getElementById('modalCurrentText');
+  if (sessionConnected && userInfo) {
+    curText.textContent = `${userInfo.name || 'OK'} @ ${userInfo.location || ''}`;
+    cur.classList.add('show');
+  } else {
+    cur.classList.remove('show');
+  }
+  modal.classList.add('show');
+  setTimeout(() => document.getElementById('sessionId').focus(), 50);
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeSettings();
+    closeDetail();
+  }
+});
+
+// ====== Session ======
+async function validateSession(sid) {
+  const url = `https://hosxp.net/phapi/PasteJSON?Action=GET&code=${encodeURIComponent(sid)}`;
+  const ctl = new AbortController();
+  const tid = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const res = await fetch(url, { signal: ctl.signal, headers: { 'Accept': 'application/json' } });
+    clearTimeout(tid);
+    if (!res.ok) return { MessageCode: res.status, Message: `HTTP ${res.status}` };
+    return await res.json();
+  } catch (e) {
+    return { MessageCode: 0, Message: e.name === 'AbortError' ? 'Timeout' : e.message };
+  }
+}
+function extractConfig(data) {
+  const r = data.result || {};
+  const ui = r.user_info || {};
+  const kv = (r.key_value && typeof r.key_value === 'object') ? r.key_value : {};
+  let apiUrl = kv['hosxp.api_url'] || ui['hosxp.api_url'] || ui.bms_url || '';
+  let apiAuthKey = kv['hosxp.api_auth_key'] || ui['hosxp.api_auth_key'] || ui.bms_session_code || '';
+  if (!apiAuthKey && typeof r.key_value === 'string') apiAuthKey = r.key_value;
+  return { apiUrl: apiUrl.replace(/\/$/, ''), apiAuthKey };
+}
+
+async function handleConnect() {
+  if (sessionConnected) { disconnect(); return; }
+  const sid = document.getElementById('sessionId').value.trim();
+  if (!sid) { showToast('err', 'กรุณาระบุ BMS Session ID'); return; }
+
+  const btn = document.getElementById('connectBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Connecting...';
+
+  const data = await validateSession(sid);
+  btn.disabled = false;
+
+  if (!data || data.MessageCode !== 200) {
+    showToast('err', data?.MessageCode === 500
+      ? 'Session หมดอายุ - กรุณาเข้าระบบ HOSxP ใหม่'
+      : (data?.Message || 'เชื่อมต่อ Session ล้มเหลว'));
+    btn.textContent = 'Connect Session';
+    return;
+  }
+
+  connectionConfig = extractConfig(data);
+  userInfo = data.result?.user_info || {};
+
+  if (!connectionConfig.apiUrl) {
+    showToast('err', 'ไม่พบ API URL ใน session data');
+    connectionConfig = null;
+    btn.textContent = 'Connect Session';
+    return;
+  }
+
+  sessionConnected = true;
+  setCookie(SESSION_COOKIE, sid, COOKIE_DAYS);
+  btn.textContent = 'Disconnect';
+  btn.classList.add('connected');
+  document.getElementById('runBtn').disabled = false;
+
+  const badge = document.getElementById('connBadge');
+  badge.classList.add('connected');
+  document.getElementById('connText').textContent =
+    `${userInfo.name || 'Connected'} @ ${userInfo.location || ''}`;
+
+  showToast('ok', `เชื่อมต่อสำเร็จ: ${userInfo.name || 'OK'}`);
+
+  // Close settings modal and auto-load data for today
+  closeSettings();
+  runQuery();
+}
+
+function disconnect() {
+  sessionConnected = false;
+  connectionConfig = null;
+  userInfo = null;
+  removeCookie(SESSION_COOKIE);
+
+  const btn = document.getElementById('connectBtn');
+  btn.textContent = 'Connect Session';
+  btn.classList.remove('connected');
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('connBadge').classList.remove('connected');
+  document.getElementById('connText').textContent = 'Not Connected';
+  document.getElementById('modalCurrent').classList.remove('show');
+
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  document.getElementById('autoCountdownPill').style.display = 'none';
+
+  showToast('info', 'Session ตัดการเชื่อมต่อแล้ว');
+}
+
+// ====== Error helper ======
+function friendlyError(code, msg) {
+  const c = Number(code);
+  if (c === 401 || c === 403) {
+    return {
+      icon: '🔒',
+      title: 'Session หมดอายุหรือไม่ได้รับสิทธิ',
+      detail: 'กรุณาตั้งค่า BMS Session ID ใหม่ผ่านไอคอนรูปเฟืองด้านบนขวา',
+      toast: 'Session หมดอายุ - กรุณาตั้งค่าใหม่',
+      action: 'openSettings()',
+      actionLabel: 'ตั้งค่า Session',
+    };
+  }
+  if (c === 0) {
+    return {
+      icon: '📡',
+      title: 'ไม่สามารถเชื่อมต่อกับ Server',
+      detail: 'ตรวจสอบเครือข่าย / VPN และลองโหลดข้อมูลใหม่อีกครั้ง',
+      toast: 'เชื่อมต่อ server ไม่ได้',
+      action: 'runQuery()',
+      actionLabel: 'ลองอีกครั้ง',
+    };
+  }
+  if (c >= 500) {
+    return {
+      icon: '⚠️',
+      title: 'Server ขัดข้อง',
+      detail: 'เซิร์ฟเวอร์ตอบกลับด้วยข้อผิดพลาด กรุณาลองใหม่อีกครั้งภายหลัง',
+      toast: `Server error ${c}`,
+      action: 'runQuery()',
+      actionLabel: 'ลองอีกครั้ง',
+    };
+  }
+  if (c === 409 || c === 400) {
+    return {
+      icon: '⚠️',
+      title: 'ข้อมูลที่ขอไม่ถูกต้อง',
+      detail: 'กรุณาตรวจสอบค่ากรอง (วันที่ / HN) แล้วลองใหม่',
+      toast: `Error ${c}`,
+      action: '',
+      actionLabel: '',
+    };
+  }
+  return {
+    icon: 'ℹ️',
+    title: `เกิดข้อผิดพลาด (${c})`,
+    detail: msg || 'ไม่สามารถดำเนินการตามคำขอได้',
+    toast: `Error ${c}`,
+    action: 'runQuery()',
+    actionLabel: 'ลองอีกครั้ง',
+  };
+}
+
+// ====== Auto refresh ======
+const AUTO_COOKIE = 'lab_auto_refresh';
+let autoTimer = null;
+let autoNextAt = 0;
+
+function scheduleAutoRefresh() {
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  const sec = Number(document.getElementById('autoRefresh').value || 0);
+  const pill = document.getElementById('autoCountdownPill');
+  if (sec > 0 && sessionConnected) {
+    autoNextAt = Date.now() + sec * 1000;
+    autoTimer = setTimeout(() => { if (sessionConnected) runQuery(); }, sec * 1000);
+    pill.style.display = '';
+  } else {
+    pill.style.display = 'none';
+  }
+}
+function setAutoRefresh() {
+  const sec = document.getElementById('autoRefresh').value;
+  setCookie(AUTO_COOKIE, String(sec), 30);
+  scheduleAutoRefresh();
+}
+setInterval(() => {
+  const pill = document.getElementById('autoCountdownPill');
+  if (!pill || pill.style.display === 'none') return;
+  const remaining = Math.max(0, Math.ceil((autoNextAt - Date.now()) / 1000));
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  document.getElementById('autoCountdown').textContent =
+    (m > 0 ? m + ':' + String(s).padStart(2, '0') : s + ' วิ');
+}, 1000);
+
+// อัปเดต "เวลารอ" ทุก 30 วิ โดยไม่ re-render ทั้งตาราง (คงอนิเมชัน pill ไว้)
+setInterval(() => {
+  document.querySelectorAll('#tableWrap .wmin').forEach(el => {
+    const since = Number(el.getAttribute('data-since'));
+    if (!since) return;
+    const m = Math.max(0, Math.floor((Date.now() - since) / 60000));
+    el.textContent = ` · ${fmtMin(m)}`;
+    const th = Number(el.getAttribute('data-th'));
+    const pill = el.closest('.pill-mini');
+    if (pill && th && m > th && !pill.classList.contains('no')) {
+      pill.classList.remove('wait'); pill.classList.add('no', 'over');
+    }
+  });
+}, 30000);
+
+// ====== Query ======
+function normalizeHnInput() {
+  const el = document.getElementById('filterHn');
+  const v = el.value.trim();
+  if (/^\d+$/.test(v) && v.length < 9) {
+    el.value = v.padStart(9, '0');
+  } else {
+    el.value = v;
+  }
+}
+
+// Filter for the visit registry (main query) — keyed on ovst (v).
+function buildVisitFilter() {
+  normalizeHnInput();
+  const hn = document.getElementById('filterHn').value.trim();
+  const start = document.getElementById('filterStart').value;
+  const end = document.getElementById('filterEnd').value;
+  if (!start || !end) throw new Error('กรุณาเลือกช่วงวันที่');
+  let where = `v.vstdate between '${start}' and '${end}'`;
+  if (hn) where += ` and v.hn = '${hn.replace(/'/g, "''")}'`;
+  return where;
+}
+
+// Filter for the lab_head payment side-queries (EDC / receipt) — keyed on lab_head (h).
+function buildOrderFilter() {
+  const custom = document.getElementById('customOrders').value.trim();
+  normalizeHnInput();
+  const hn = document.getElementById('filterHn').value.trim();
+  let where = '';
+
+  if (custom) {
+    const ids = custom.split(/[,\s]+/).map(s => s.trim()).filter(s => /^\d+$/.test(s));
+    if (ids.length === 0) {
+      throw new Error('Custom Order Number ไม่ถูกต้อง - ต้องเป็นตัวเลขคั่นด้วย comma');
+    }
+    where = `h.lab_order_number in (${ids.join(',')})`;
+  } else {
+    const start = document.getElementById('filterStart').value;
+    const end = document.getElementById('filterEnd').value;
+    if (!start || !end) throw new Error('กรุณาเลือกช่วงวันที่');
+    where = `h.order_date between '${start}' and '${end}'`;
+  }
+
+  if (hn) {
+    where += ` and h.hn = '${hn.replace(/'/g, "''")}'`;
+  }
+
+  return where;
+}
+
+let currentOrderFilter = '';
+async function runQuery() {
+  if (!sessionConnected) { showToast('err', 'กรุณา Connect Session ก่อน'); return; }
+
+  let visitFilter, orderFilter;
+  try { visitFilter = buildVisitFilter(); orderFilter = buildOrderFilter(); }
+  catch (e) { showToast('err', e.message); return; }
+  currentOrderFilter = orderFilter;
+
+  const sqlTemplate = document.getElementById('sqlSource').value || DEFAULT_SQL;
+  const sql = sqlTemplate.replace(/:visit_filter/g, visitFilter).replace(/:order_filter/g, orderFilter);
+  const minified = minifySql(sql);
+  const fullUrl = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minified)}&app=${encodeURIComponent(APP_NAME)}`;
+
+  const btn = document.getElementById('runBtn');
+  const btnText = document.getElementById('runBtnText');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span>กำลังโหลด...';
+
+  const t0 = Date.now();
+  let resp;
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+    const res = await fetch(fullUrl, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` },
+      signal: ctl.signal,
+    });
+    clearTimeout(tid);
+    resp = await res.json();
+    if (res.status === 401) resp = { MessageCode: 401, Message: 'Unauthorized - API Key หมดอายุ' };
+    else if (res.status === 502) resp = { MessageCode: 502, Message: 'Bad Gateway - Tunnel ไม่พร้อมใช้งาน' };
+    else if (res.status === 500) resp = { MessageCode: 500, Message: 'Session หมดอายุ - กรุณา login ใหม่' };
+  } catch (e) {
+    resp = { MessageCode: 0, Message: e.name === 'AbortError' ? `Timeout ${DEFAULT_TIMEOUT/1000}s` : e.message };
+  }
+  const elapsed = Date.now() - t0;
+  btn.disabled = false;
+  btnText.textContent = 'โหลดข้อมูล';
+
+  if (resp.MessageCode !== 200) {
+    const friendly = friendlyError(resp.MessageCode, resp.Message);
+    showToast('err', friendly.toast);
+    document.getElementById('tableWrap').innerHTML = `
+      <div class="error-state" style="padding:60px 30px;">
+        <div style="font-size:48px; margin-bottom:12px;">${friendly.icon}</div>
+        <h3 style="font-size:22px; color:var(--text); margin-bottom:6px;">${escHtml(friendly.title)}</h3>
+        <div style="font-size:16px; color:var(--text-muted); max-width:480px; margin:0 auto;">
+          ${escHtml(friendly.detail)}
+        </div>
+        ${friendly.action ? `<button class="btn" style="margin-top:18px;" onclick="${friendly.action}">${friendly.actionLabel}</button>` : ''}
+      </div>`;
+    document.getElementById('rowCount').textContent = '!';
+    document.getElementById('elapsedTime').textContent = elapsed + 'ms';
+    document.getElementById('elapsedPill').style.display = '';
+    scheduleAutoRefresh();
+    return;
+  }
+
+  lastData = Array.isArray(resp.data) ? resp.data : [];
+  document.getElementById('elapsedTime').textContent = elapsed + 'ms';
+  document.getElementById('elapsedPill').style.display = '';
+
+  // ค่าเริ่มต้น (จะถูกเติมจาก side-queries แบบขนาน)
+  lastData.forEach(r => {
+    r.cc_edc = 0; r.cc_rcpt = 0; r.pt_name = '';
+    r.xray_order = 0; r.xray_report = 0; r.nurse_done = 0; r.doctor_done = 0;
+    r.lab_wait_since = null; r.xray_wait_since = null;
+    r.lab_abn = 0; r.lab_crit = 0;
+    r.lab_done_recv = null; r.lab_done_rep = null;
+    r.xray_done_start = null; r.xray_done_end = null;
+    r.items = null;   // null = ยังโหลดรายการไม่เสร็จ
+  });
+
+  // Render once with current data (ยังไม่มีชื่อ/สถานะ/EDC/rcpt)
+  populateFilters(lastData);
+  filterTable();   // filterTable เรียก renderSummary(scopedData()) ให้เอง
+  showToast('ok', `สำเร็จ - ${lastData.length} HN (${elapsed}ms)`);
+
+  // ดึงชื่อคนไข้ + สถานะคลินิก + รายการ Lab/Xray แบบขนาน (อิสระจากกัน — ตารางหลักขึ้นทันที)
+  loadNames();
+  loadClinicalStatus(visitFilter);
+  loadLabFlags(visitFilter);
+  loadTotals(visitFilter);
+  loadItemsList();
+  // สถานะการชำระเงิน: ปิดไว้ชั่วคราว — เปิดคืนได้ด้วย loadPaymentStatuses(orderFilter)
+
+  // Reset auto-refresh timer after each load
+  scheduleAutoRefresh();
+}
+
+async function fetchSqlCount(sqlTemplate, orderFilter, appSuffix) {
+  const sql = sqlTemplate.replace(/:order_filter/g, orderFilter);
+  const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.' + appSuffix)}`;
+  const ctl = new AbortController();
+  const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+  try {
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` },
+      signal: ctl.signal,
+    });
+    clearTimeout(tid);
+    const json = await res.json();
+    if (json.MessageCode === 200) return json.data || [];
+    console.warn(`${appSuffix} query failed`, json);
+    return [];
+  } catch (e) {
+    console.warn(`${appSuffix} fetch error`, e);
+    return [];
+  }
+}
+
+async function loadPaymentStatuses(orderFilter) {
+  const [edcRows, rcptRows] = await Promise.all([
+    fetchSqlCount(EDC_SUM_SQL, orderFilter, 'EDC'),
+    fetchSqlCount(RCPT_SUM_SQL, orderFilter, 'Rcpt'),
+  ]);
+
+  const edcMap = new Map(edcRows.map(r => [String(r.hn), Number(r.n || 0)]));
+  const rcptMap = new Map(rcptRows.map(r => [String(r.hn), Number(r.n || 0)]));
+
+  lastData.forEach(r => {
+    r.cc_edc = edcMap.get(String(r.hn)) || 0;
+    r.cc_rcpt = rcptMap.get(String(r.hn)) || 0;
+  });
+
+  filterTable();   // filterTable เรียก renderSummary(scopedData()) ให้เอง
+}
+
+// ====== Patient names (แยกคิวรี่ กัน /api/sql คืนภาษาไทยเพี้ยน) ======
+function chunkArr(arr, n) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
+async function loadNames() {
+  const hns = [...new Set(lastData.map(r => String(r.hn || '').trim()).filter(Boolean))];
+  if (hns.length === 0) return;
+  const map = {};
+  for (const part of chunkArr(hns, 50)) {
+    const inList = part.map(h => `'${h.replace(/'/g, "''")}'`).join(',');
+    const sql = NAMES_SQL.replace(/:hn_list/g, inList);
+    const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.Names')}`;
+    try {
+      const ctl = new AbortController();
+      const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` },
+        signal: ctl.signal,
+      });
+      clearTimeout(tid);
+      const json = await res.json();
+      if (json.MessageCode !== 200) { console.warn('Names query failed', json); break; }
+      (json.data || []).forEach(p => {
+        const nm = String(p.pt_name || '').replace(/\s+/g, ' ').trim();
+        if (nm) map[String(p.hn || '').trim()] = nm;
+      });
+    } catch (e) {
+      console.warn('Names fetch error', e);
+      break;
+    }
+  }
+  lastData.forEach(r => { r.pt_name = map[String(r.hn || '').trim()] || r.pt_name || ''; });
+  filterTable();
+  // อัปเดตชื่อบน slide-panel ถ้ากำลังเปิดคนไข้รายนี้อยู่
+  if (currentDetailHn) {
+    const cur = lastData.find(r => String(r.hn) === String(currentDetailHn));
+    if (cur && cur.pt_name) document.getElementById('detailName').textContent = cur.pt_name;
+  }
+}
+
+// ====== สถานะคลินิก XRAY / Nurse / Doctor (แยกคิวรี่ merge ด้วย vn) ======
+async function loadClinicalStatus(visitFilter) {
+  const sql = CLINICAL_SQL.replace(/:visit_filter/g, visitFilter);
+  const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.Clinical')}`;
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` },
+      signal: ctl.signal,
+    });
+    clearTimeout(tid);
+    const json = await res.json();
+    if (json.MessageCode !== 200) { console.warn('Clinical query failed', json); return; }
+    const map = new Map((json.data || []).map(c => [String(c.vn), c]));
+    lastData.forEach(r => {
+      const c = map.get(String(r.vn));
+      if (c) {
+        r.xray_order = Number(c.xray_order || 0);
+        r.xray_report = Number(c.xray_report || 0);
+        r.nurse_done = Number(c.nurse_done || 0);
+        r.doctor_done = Number(c.doctor_done || 0);
+        r.lab_wait_since = c.lab_wait_since || null;
+        r.xray_wait_since = c.xray_wait_since || null;
+      }
+    });
+    detectStatusChanges();   // เทียบกับรอบก่อน -> วาบเขียวช่องที่เพิ่งเสร็จ
+    filterTable();           // filterTable เรียก renderSummary(scopedData()) ให้เอง
+  } catch (e) {
+    console.warn('Clinical fetch error', e);
+  }
+}
+
+// ผล Lab ผิดปกติ/วิกฤต (แยกคิวรี่) + ตรวจจับเพื่อแจ้งเตือน
+async function loadLabFlags(visitFilter) {
+  const sql = LABFLAG_SQL.replace(/:visit_filter/g, visitFilter);
+  const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.LabFlag')}`;
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` }, signal: ctl.signal });
+    clearTimeout(tid);
+    const json = await res.json();
+    if (json.MessageCode !== 200) { console.warn('LabFlag query failed', json); return; }
+    const map = new Map((json.data || []).map(c => [String(c.vn), c]));
+    lastData.forEach(r => {
+      const c = map.get(String(r.vn));
+      if (c) { r.lab_abn = Number(c.lab_abn || 0); r.lab_crit = Number(c.lab_crit || 0); }
+    });
+    detectAbnormal();
+    filterTable();
+  } catch (e) {
+    console.warn('LabFlag fetch error', e);
+  }
+}
+
+// เวลา total (Lab/Xray ที่เสร็จ) — แยกคิวรี่ render-only
+async function loadTotals(visitFilter) {
+  const sql = TOTALS_SQL.replace(/:visit_filter/g, visitFilter);
+  const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.Totals')}`;
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` }, signal: ctl.signal });
+    clearTimeout(tid);
+    const json = await res.json();
+    if (json.MessageCode !== 200) { console.warn('Totals query failed', json); return; }
+    const map = new Map((json.data || []).map(c => [String(c.vn), c]));
+    lastData.forEach(r => {
+      const c = map.get(String(r.vn));
+      if (c) {
+        r.lab_done_recv = c.lab_done_recv || null; r.lab_done_rep = c.lab_done_rep || null;
+        r.xray_done_start = c.xray_done_start || null; r.xray_done_end = c.xray_done_end || null;
+      }
+    });
+    filterTable();
+  } catch (e) {
+    console.warn('Totals fetch error', e);
+  }
+}
+
+// ตรวจจับคนไข้ที่ "เพิ่งมีผล Lab ผิดปกติ" (0 -> 1) เทียบรอบก่อน -> แจ้งเตือน
+function detectAbnormal() {
+  const snap = new Map();
+  const events = [];
+  lastData.forEach(r => {
+    const abn = (Number(r.lab_abn || 0) > 0 || Number(r.lab_crit || 0) > 0) ? 1 : 0;
+    snap.set(String(r.vn), abn);
+    if (prevAbnSnap && abn && !prevAbnSnap.get(String(r.vn))) {
+      flashCells.add(`${r.vn}:lab`);
+      events.push({ r, type: 'abnormal' });
+    }
+  });
+  prevAbnSnap = snap;
+  if (events.length) emitNotifications(events);
+}
+
+// เทียบสถานะกับรอบก่อน: ช่องที่เพิ่งเปลี่ยนเป็น "เสร็จ" -> วาบเขียว (flashCells) + แจ้งเตือน Lab/Xray
+function detectStatusChanges() {
+  const snap = new Map(), byVn = new Map();
+  lastData.forEach(r => {
+    byVn.set(String(r.vn), r);
+    snap.set(String(r.vn), {
+      lab: (Number(r.cc_order || 0) > 0 && Number(r.cc_report || 0) >= Number(r.cc_order || 0)) ? 1 : 0,
+      xray: (Number(r.xray_order || 0) > 0 && Number(r.xray_report || 0) > 0) ? 1 : 0,
+      nurse: Number(r.nurse_done || 0) > 0 ? 1 : 0,
+      doctor: Number(r.doctor_done || 0) > 0 ? 1 : 0,
+    });
+  });
+  const events = [];
+  if (prevStatusSnap) {
+    flashCells = new Set();
+    snap.forEach((cur, vn) => {
+      const prev = prevStatusSnap.get(vn);
+      if (!prev) return;
+      ['lab', 'xray', 'nurse', 'doctor'].forEach(k => {
+        if (cur[k] && !prev[k]) flashCells.add(`${vn}:${k}`);
+      });
+      // แจ้งเตือนเฉพาะ Lab/Xray ที่เพิ่งรายงานผล (0 -> 1)
+      ['lab', 'xray'].forEach(k => {
+        if (cur[k] && !prev[k] && byVn.get(vn)) events.push({ r: byVn.get(vn), type: k });
+      });
+    });
+    if (flashCells.size) setTimeout(() => { flashCells = new Set(); }, 3000);
+  }
+  prevStatusSnap = snap;
+  if (events.length) emitNotifications(events);
+}
+
+// ===== ระบบแจ้งเตือนผล Lab/X-ray =====
+function emitNotifications(events) {
+  const roomFilter = document.getElementById('filterRoom').value;  // ขอบเขต: ตามห้องที่กรอง
+  const d = new Date();
+  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const batch = [];
+  events.forEach(({ r, type }) => {
+    if (roomFilter && (r.room_name || '') !== roomFilter) return;
+    const ev = { hn: r.hn, name: r.pt_name || r.hn, room: r.room_name || '-', type, time: hhmm };
+    if (type === 'abnormal') {
+      ev.critical = Number(r.lab_crit || 0) > 0;
+      ev.count = Number(r.lab_abn || 0) || Number(r.lab_crit || 0);
+    }
+    notifLog.unshift(ev);
+    batch.push(ev);
+  });
+  if (notifLog.length > 100) notifLog.length = 100;
+  if (batch.length === 0) return;
+  notifUnseen += batch.length;
+  updateNotifBell();
+  renderNotifList();
+  playChime(batch.some(e => e.type === 'abnormal'));   // ผิดปกติ = เสียงเร่งด่วน
+  showNotifToast(batch);
+  showDesktopNotif(batch);
+  flashTitle();
+}
+
+function updateNotifBell() {
+  const bell = document.getElementById('notifBell'), badge = document.getElementById('notifBadge');
+  if (notifUnseen > 0) {
+    badge.textContent = notifUnseen > 99 ? '99+' : notifUnseen;
+    badge.style.display = ''; bell.classList.add('has-unseen');
+  } else {
+    badge.style.display = 'none'; bell.classList.remove('has-unseen');
+  }
+}
+
+function renderNotifList() {
+  const list = document.getElementById('notifList');
+  if (notifLog.length === 0) { list.innerHTML = `<div class="notif-empty">ยังไม่มีการแจ้งเตือน</div>`; return; }
+  list.innerHTML = notifLog.map(e => {
+    let ic, label, cls;
+    if (e.type === 'abnormal') {
+      cls = e.critical ? 'critical' : 'abnormal';
+      ic = e.critical ? '‼️' : '⚠️';
+      label = (e.critical ? 'ผล Lab วิกฤต' : 'ผล Lab ผิดปกติ') + (e.count ? ` (${e.count} รายการ)` : '');
+    } else {
+      cls = e.type;
+      ic = e.type === 'lab' ? '🧪' : '📷';
+      label = e.type === 'lab' ? 'ผล Lab กลับมา' : 'ผล X-ray กลับมา';
+    }
+    return `<div class="notif-item ${cls}" onclick="notifOpen('${String(e.hn).replace(/[^0-9A-Za-z]/g, '')}')">
+      <span class="ni-ic">${ic}</span>
+      <div class="ni-main">
+        <div class="ni-title">${label}</div>
+        <div class="ni-sub">${escHtml(String(e.hn))} · ${escHtml(e.name)} · ${escHtml(e.room)}</div>
+      </div>
+      <span class="ni-time">${escHtml(e.time)}</span>
+    </div>`;
+  }).join('');
+}
+
+function notifOpen(hn) {
+  const r = lastData.find(x => String(x.hn).replace(/[^0-9A-Za-z]/g, '') === hn);
+  if (r) { document.getElementById('notifPanel').classList.remove('show'); openDetail(r); }
+}
+
+function toggleNotifPanel(ev) {
+  ev.stopPropagation();
+  const panel = document.getElementById('notifPanel');
+  const show = !panel.classList.contains('show');
+  panel.classList.toggle('show', show);
+  if (show) { notifUnseen = 0; updateNotifBell(); renderNotifList(); document.title = BASE_TITLE; }
+}
+
+function clearNotifs() {
+  notifLog = []; notifUnseen = 0; updateNotifBell(); renderNotifList(); document.title = BASE_TITLE;
+}
+
+function playChime(urgent) {
+  if (!notifSoundOn) return;
+  try {
+    notifAudioCtx = notifAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (notifAudioCtx.state === 'suspended') notifAudioCtx.resume();
+    const t0 = notifAudioCtx.currentTime;
+    const notes = urgent ? [660, 660, 660] : [880, 1174.66];   // ผิดปกติ = 3 เสียงย้ำ
+    const gap = urgent ? 0.2 : 0.16;
+    notes.forEach((f, i) => {
+      const o = notifAudioCtx.createOscillator(), g = notifAudioCtx.createGain();
+      o.type = urgent ? 'triangle' : 'sine'; o.frequency.value = f;
+      const s = t0 + i * gap;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(urgent ? 0.3 : 0.22, s + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.35);
+      o.connect(g); g.connect(notifAudioCtx.destination);
+      o.start(s); o.stop(s + 0.4);
+    });
+  } catch (e) { console.warn('chime failed', e); }
+}
+
+function showNotifToast(batch) {
+  const normal = batch.filter(e => e.type !== 'abnormal');
+  const abnormal = batch.filter(e => e.type === 'abnormal');
+  if (normal.length) buildNotifToast(normal, 'normal');
+  if (abnormal.length) buildNotifToast(abnormal, abnormal.some(e => e.critical) ? 'critical' : 'abnormal');
+}
+
+function buildNotifToast(evs, kind) {
+  let head;
+  if (kind === 'normal') {
+    const labN = evs.filter(e => e.type === 'lab').length, xrayN = evs.filter(e => e.type === 'xray').length;
+    head = '🔔 ' + [labN ? `ผล Lab ${labN}` : '', xrayN ? `ผล X-ray ${xrayN}` : ''].filter(Boolean).join(' · ') + ' รายงานผลแล้ว';
+  } else {
+    head = (kind === 'critical' ? '‼️ ผล Lab วิกฤต ' : '⚠️ ผล Lab ผิดปกติ ') + `${evs.length} ราย`;
+  }
+  const icon = e => e.type === 'abnormal' ? (e.critical ? '‼️' : '⚠️') : (e.type === 'lab' ? '🧪' : '📷');
+  const lines = evs.slice(0, 3).map(e => `${icon(e)} ${escHtml(String(e.hn))} ${escHtml(e.name)}`).join('<br>');
+  const more = evs.length > 3 ? `<div class="tn-more">และอีก ${evs.length - 3} ราย…</div>` : '';
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = `toast notif ${kind}`;
+  t.innerHTML = `<div class="tn-head">${escHtml(head)}</div><div class="tn-line">${lines}</div>${more}`;
+  t.onclick = () => { t.remove(); document.getElementById('notifBell').click(); };
+  wrap.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, kind === 'normal' ? 6000 : 10000);
+}
+
+function showDesktopNotif(batch) {
+  if (!notifDesktopOn || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible') return;  // เด้งเฉพาะตอนไม่ได้ดูแท็บนี้
+  const hasAbn = batch.some(e => e.type === 'abnormal');
+  const label = e => e.type === 'abnormal' ? (e.critical ? 'วิกฤต' : 'ผิดปกติ') : (e.type === 'lab' ? 'Lab' : 'X-ray');
+  const body = batch.slice(0, 5).map(e => `${label(e)} · ${e.hn} ${e.name}`).join('\n');
+  const title = hasAbn ? `⚠️ ผล Lab ผิดปกติ (${batch.length} ราย)` : `🔔 ผลกลับมา ${batch.length} ราย`;
+  try { new Notification(title, { body, tag: 'bms-lab-notif' }); } catch (e) {}
+}
+
+function flashTitle() {
+  if (notifUnseen > 0 && document.visibilityState !== 'visible') {
+    document.title = `(${notifUnseen}) 🔔 ผลใหม่ — ${BASE_TITLE}`;
+  }
+}
+
+function setNotifSound() {
+  notifSoundOn = document.getElementById('notifSound').checked;
+  setCookie(NOTIF_SOUND_COOKIE, notifSoundOn ? '1' : '0', 30);
+  if (notifSoundOn) playChime();  // เล่นตัวอย่างให้ฟัง
+}
+
+async function setNotifDesktop() {
+  const cb = document.getElementById('notifDesktop');
+  if (cb.checked) {
+    if (typeof Notification === 'undefined') { showToast('err', 'เบราว์เซอร์นี้ไม่รองรับ Desktop notification'); cb.checked = false; return; }
+    let perm = Notification.permission;
+    if (perm === 'default') perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      showToast('err', 'ยังไม่ได้รับอนุญาต — เปิดสิทธิ์แจ้งเตือนในเบราว์เซอร์');
+      cb.checked = false; notifDesktopOn = false; setCookie(NOTIF_DESKTOP_COOKIE, '0', 30); return;
+    }
+    showToast('ok', 'เปิด Desktop notification แล้ว');
+  }
+  notifDesktopOn = cb.checked;
+  setCookie(NOTIF_DESKTOP_COOKIE, notifDesktopOn ? '1' : '0', 30);
+}
+
+// ปิด panel เมื่อคลิกที่อื่น / คืน title เมื่อกลับมาดูแท็บ
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.notif-wrap');
+  const panel = document.getElementById('notifPanel');
+  if (wrap && panel && !wrap.contains(e.target)) panel.classList.remove('show');
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') document.title = BASE_TITLE;
+});
+
+// ====== รายการ Lab/Xray ต่อ visit (คอลัมน์ "รายการ") ======
+async function fetchItems(sqlTemplate, appSuffix, d1, d2) {
+  const sql = sqlTemplate.replace(/:d1/g, d1).replace(/:d2/g, d2);
+  const url = `${connectionConfig.apiUrl}/api/sql?sql=${encodeURIComponent(minifySql(sql))}&app=${encodeURIComponent(APP_NAME + '.' + appSuffix)}`;
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), DEFAULT_TIMEOUT);
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${connectionConfig.apiAuthKey}` }, signal: ctl.signal });
+    clearTimeout(tid);
+    const json = await res.json();
+    if (json.MessageCode !== 200) { console.warn(`${appSuffix} items query failed`, json); return []; }
+    return json.data || [];
+  } catch (e) {
+    console.warn(`${appSuffix} items fetch error`, e);
+    return [];
+  }
+}
+
+async function loadItemsList() {
+  const d1 = document.getElementById('filterStart').value;
+  const d2 = document.getElementById('filterEnd').value;
+  if (!d1 || !d2) return;
+  // ดึง Lab + Xray แยกกัน — ถ้า Xray schema ไม่ตรงจะไม่ทำให้ Lab พัง
+  const [labRows, xrayRows] = await Promise.all([
+    fetchItems(LAB_ITEMS_SQL, 'LabItems', d1, d2),
+    fetchItems(XRAY_ITEMS_SQL, 'XrayItems', d1, d2),
+  ]);
+  const map = new Map();  // vn -> [{kind, code, name, reported}]
+  const push = (vn, obj) => {
+    const k = String(vn);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(obj);
+  };
+  labRows.forEach(r => push(r.vn, { kind: 'LAB', code: r.code || '', name: r.name || '', reported: Number(r.reported || 0) > 0 }));
+  xrayRows.forEach(r => push(r.vn, { kind: 'XRAY', code: r.code || '', name: r.name || '', reported: Number(r.reported || 0) > 0 }));
+  lastData.forEach(r => { r.items = map.get(String(r.vn)) || []; });
+  filterTable();
+}
+
+// ====== Render ======
+function payBadge(paid, total, edc, rcpt, pttype) {
+  paid = Number(paid || 0); total = Number(total || 0);
+  edc = Number(edc || 0); rcpt = Number(rcpt || 0);
+  if (edc > 0) return `<span class="badge pay-edc">รูด EDC แล้ว${total > 0 ? ` (${edc}/${total})` : ''}</span>`;
+  if (total === 0) return '<span class="badge pay-n">-</span>';
+  if (rcpt > 0 || paid >= total) {
+    const n = Math.max(rcpt, paid);
+    return `<span class="badge pay-y">ชำระแล้ว (${n}/${total})</span>`;
+  }
+  if (paid > 0) return `<span class="badge pay-p">ชำระบางส่วน (${paid}/${total})</span>`;
+  if (isEntitlementDebt(pttype)) return `<span class="badge pay-debt">ลูกหนี้สิทธิ (${total})</span>`;
+  return `<span class="badge pay-n">ยังไม่ชำระ (0/${total})</span>`;
+}
+
+function numCell(val, total) {
+  val = Number(val || 0);
+  total = Number(total || 0);
+  if (val === 0) return `<span class="num-val num-zero">0</span>`;
+  if (val >= total) return `<span class="num-val num-full">${val.toLocaleString()}</span>`;
+  return `<span class="num-val num-partial">${val.toLocaleString()}</span>`;
+}
+
+function isEntitlementDebt(pttype) {
+  if (!pttype) return false;
+  const t = String(pttype);
+  const tl = t.toLowerCase();
+  return t.indexOf('ไม่ร่วมจ่าย') >= 0
+      || t.indexOf('ยกเว้น') >= 0
+      || t.indexOf('ประกันสังคม') >= 0
+      || t.indexOf('ส่งเสริม') >= 0
+      || t.indexOf('ฝากครรภ์') >= 0
+      || t.indexOf('ผู้มีปัญหาสถานะ') >= 0
+      || tl.indexOf('claim code') >= 0
+      || tl.indexOf('claimcode') >= 0;
+}
+
+function rowPayStatus(r) {
+  const edc = Number(r.cc_edc || 0);
+  if (edc > 0) return 'E';
+  const rcpt = Number(r.cc_rcpt || 0);
+  const paid = Number(r.cc_paid || 0);
+  const total = Number(r.cc_total || r.cc_order || 0);
+  if (total === 0) return '';
+  if (rcpt > 0 || paid >= total) return 'Y';
+  if (paid > 0) return 'P';
+  if (isEntitlementDebt(r.pttype_name)) return 'D';
+  return 'N';
+}
+
+function populateFilters(data) {
+  const select = document.getElementById('filterPttype');
+  const prev = select.value;
+  const types = Array.from(new Set(data.map(r => r.pttype_name).filter(Boolean))).sort();
+  select.innerHTML = '<option value="">สิทธิ: ทั้งหมด</option>'
+    + types.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
+  if (types.includes(prev)) select.value = prev;
+
+  const roomSel = document.getElementById('filterRoom');
+  const prevRoom = roomSel.value;
+  const rooms = Array.from(new Set(data.map(r => r.room_name).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'th'));
+  roomSel.innerHTML = '<option value="">ห้องตรวจ: ทั้งหมด</option>'
+    + rooms.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
+  if (rooms.includes(prevRoom)) roomSel.value = prevRoom;
+}
+
+function slotKey(r) {
+  const s = r.qs_slot;
+  if (s == null || s === '') return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : String(s);
+}
+
+function togglePendingOnly() {
+  pendingOnly = !pendingOnly;
+  const btn = document.getElementById('pendingToggle');
+  btn.classList.toggle('active', pendingOnly);
+  btn.textContent = pendingOnly ? '🔴 เฉพาะที่ค้าง ✓' : '🔴 เฉพาะที่ค้าง';
+  filterTable();
+}
+
+// ชุดข้อมูลสำหรับ dashboard (การ์ด/คอขวด) — ตามตัวกรอง "ขอบเขต" (ห้องตรวจ + สิทธิ)
+// ไม่รวมช่องค้นหา/ปุ่มเฉพาะที่ค้าง เพราะเป็นการกรอง worklist ชั่วคราว
+function scopedData() {
+  const pttype = document.getElementById('filterPttype').value;
+  const room = document.getElementById('filterRoom').value;
+  return lastData.filter(r => {
+    if (pttype && (r.pttype_name || '') !== pttype) return false;
+    if (room && (r.room_name || '') !== room) return false;
+    return true;
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('tableSearch').value.trim().toLowerCase();
+  const pttype = document.getElementById('filterPttype').value;
+  const room = document.getElementById('filterRoom').value;
+
+  filteredData = lastData.filter(r => {
+    if (pendingOnly && !rowPending(r).any) return false;
+    if (pttype && (r.pttype_name || '') !== pttype) return false;
+    if (room && (r.room_name || '') !== room) return false;
+    if (q) {
+      const match = (r.hn || '').toLowerCase().includes(q)
+                 || (r.pt_name || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  // เรียงตาม qs_slot (คิวห้องตรวจ) — คนไม่มี slot ไปท้าย, tiebreak ด้วยเวลา visit แล้ว HN
+  filteredData.sort((a, b) => {
+    const ka = slotKey(a), kb = slotKey(b);
+    if (ka !== null || kb !== null) {
+      if (ka === null) return 1;
+      if (kb === null) return -1;
+      if (typeof ka === 'number' && typeof kb === 'number') { if (ka !== kb) return ka - kb; }
+      else { const c = String(ka).localeCompare(String(kb)); if (c !== 0) return c; }
+    }
+    const ta = String(a.vsttime || ''), tb = String(b.vsttime || '');
+    if (ta !== tb) return ta.localeCompare(tb);
+    return String(a.hn || '').localeCompare(String(b.hn || ''));
+  });
+
+  renderTable(filteredData);
+  renderSummary(scopedData());   // การ์ด/คอขวด ตามตัวกรองห้องตรวจ+สิทธิ
+}
+
+// ===== เวลารอ (วัดจากเวลาที่คนไข้มาถึง vstdate+vsttime) =====
+function minutesSince(vstdate, vsttime) {
+  if (!vstdate || !vsttime) return null;
+  const d = String(vstdate).slice(0, 10);
+  const t = String(vsttime).slice(0, 8);
+  const dt = new Date(`${d}T${t}`);
+  if (isNaN(dt.getTime())) return null;
+  return { min: Math.max(0, Math.floor((Date.now() - dt.getTime()) / 60000)), since: dt.getTime() };
+}
+function fmtMin(m) {
+  if (m == null) return '';
+  if (m < 60) return `${m} น`;
+  const h = Math.floor(m / 60), mm = m % 60;
+  return mm ? `${h} ชม ${mm} น` : `${h} ชม`;
+}
+// นับเวลาจาก datetime string ('YYYY-MM-DDTHH:MM:SS') — ใช้กับ lab receive / xray accept
+function minutesSinceDatetime(dtStr) {
+  if (!dtStr) return null;
+  const dt = new Date(String(dtStr).replace(' ', 'T'));
+  if (isNaN(dt.getTime())) return null;
+  return { min: Math.max(0, Math.floor((Date.now() - dt.getTime()) / 60000)), since: dt.getTime() };
+}
+// ผลต่างเวลาเป็นนาที (start -> end) — ใช้กับ total เวลา lab เสร็จ (รับ -> รายงานผล)
+function minutesBetween(startStr, endStr) {
+  if (!startStr || !endStr) return null;
+  const s = new Date(String(startStr).replace(' ', 'T')), e = new Date(String(endStr).replace(' ', 'T'));
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return null;
+  return Math.max(0, Math.round((e.getTime() - s.getTime()) / 60000));
+}
+// span.wmin ให้ interval อัปเดตเวลาได้โดยไม่ re-render ทั้งตาราง (คงอนิเมชันไว้)
+function waitPill(elapsed, threshold) {
+  if (!elapsed) return { cls: 'pill-mini wait', tag: '' };
+  const over = elapsed.min > threshold;
+  const tag = `<span class="wmin" data-since="${elapsed.since}" data-th="${threshold}"> · ${fmtMin(elapsed.min)}</span>`;
+  return { cls: over ? 'pill-mini no over' : 'pill-mini wait', tag };
+}
+
+// ===== สถานะแต่ละคอลัมน์ (pill สี + เวลารอ) =====
+function labStatusCell(order, receive, report, elapsed, totalMin) {
+  order = Number(order || 0); receive = Number(receive || 0); report = Number(report || 0);
+  if (order === 0) return '<span class="num-zero">ไม่มีสั่ง</span>';
+  if (report >= order) {
+    const tot = (totalMin != null) ? `<span class="wtot"> · total ${fmtMin(totalMin)}</span>` : '';
+    return `<span class="pill-mini ok">✓ ผลครบ ${report}/${order}${tot}</span>`;
+  }
+  const label = report > 0 ? `รอผล ${report}/${order}` : (receive > 0 ? `รับแล้ว ${receive}/${order}` : `รอรับ 0/${order}`);
+  const w = waitPill(elapsed, SLA_MIN.lab);
+  return `<span class="${w.cls}">${label}${w.tag}</span>`;
+}
+function xrayStatusCell(hasOrder, hasReport, elapsed, totalMin) {
+  if (!hasOrder) return '<span class="num-zero">ไม่มีสั่ง</span>';
+  if (hasReport) {
+    const tot = (totalMin != null) ? `<span class="wtot"> · total ${fmtMin(totalMin)}</span>` : '';
+    return `<span class="pill-mini ok">✓ ผล X-ray${tot}</span>`;
+  }
+  const w = waitPill(elapsed, SLA_MIN.xray);
+  return `<span class="${w.cls}">รอผล X-ray${w.tag}</span>`;
+}
+function doneCell(done, doneLabel, waitLabel, elapsed, threshold) {
+  if (done) return `<span class="pill-mini ok">✓ ${escHtml(doneLabel)}</span>`;
+  const w = waitPill(elapsed, threshold);
+  return `<span class="${w.cls}">${escHtml(waitLabel)}${w.tag}</span>`;
+}
+
+// ค้างขั้นไหนบ้าง (ใช้กับปุ่ม "เฉพาะที่ค้าง" + การ์ดสรุป + คอขวดต่อห้อง)
+function rowPending(r) {
+  const order = Number(r.cc_order || 0), report = Number(r.cc_report || 0);
+  const lab = order > 0 && report < order;
+  const xray = Number(r.xray_order || 0) > 0 && !(Number(r.xray_report || 0) > 0);
+  const nurse = !(Number(r.nurse_done || 0) > 0);
+  const doctor = !(Number(r.doctor_done || 0) > 0);
+  return { lab, xray, nurse, doctor, any: lab || xray || nurse || doctor };
+}
+
+// คอลัมน์ "รายการ": chip เขียว=รายงานผลแล้ว, แดง=ยังไม่มีผล (Xray = เส้นประ)
+function itemsCell(items) {
+  if (!items) return '<span class="num-zero">…</span>';        // ยังโหลดไม่เสร็จ
+  if (items.length === 0) return '<span class="num-zero">-</span>';
+  return `<div class="item-chips">` + items.map(it => {
+    const cls = it.reported ? 'ok' : 'no';
+    const label = String(it.name || it.code || '');
+    const short = label.length > 18 ? label.slice(0, 17) + '…' : label;
+    const title = `${it.kind === 'XRAY' ? '📷 X-ray: ' : '🧪 Lab: '}${it.name || it.code} — ${it.reported ? 'รายงานผลแล้ว ✓' : 'ยังไม่มีผล'}`;
+    return `<span class="item-chip ${cls}${it.kind === 'XRAY' ? ' xray' : ''}" title="${escHtml(title)}">${escHtml(short)}</span>`;
+  }).join('') + `</div>`;
+}
+
+function renderTable(data) {
+  const wrap = document.getElementById('tableWrap');
+  document.getElementById('rowCount').textContent = data.length;
+
+  if (data.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><h3>ไม่พบข้อมูล</h3><div>ลองปรับช่วงวันที่ / ห้องตรวจ หรือคีย์ค้นหา</div></div>`;
+    return;
+  }
+
+  const totals = { labDone: 0, xrayDone: 0, nurseDone: 0, doctorDone: 0 };
+  const rows = data.map((r, i) => {
+    const order = Number(r.cc_order || 0);
+    const receive = Number(r.cc_receive || 0);
+    const report = Number(r.cc_report || 0);
+    const xrayOrder = Number(r.xray_order || 0) > 0;
+    const xrayReport = Number(r.xray_report || 0) > 0;
+    const nurseDone = Number(r.nurse_done || 0) > 0;
+    const doctorDone = Number(r.doctor_done || 0) > 0;
+    const elapsed = minutesSince(r.vstdate, r.vsttime);        // nurse/doctor = ตั้งแต่มาถึง
+    const labElapsed = minutesSinceDatetime(r.lab_wait_since);  // lab = ตั้งแต่รับ lab
+    const xrayElapsed = minutesSinceDatetime(r.xray_wait_since);// xray = ตั้งแต่รับตัว
+    const labTotal = (order > 0 && report >= order) ? minutesBetween(r.lab_done_recv, r.lab_done_rep) : null; // total เมื่อผลครบ
+    const xrayTotal = (xrayOrder && xrayReport) ? minutesBetween(r.xray_done_start, r.xray_done_end) : null;  // total เมื่อ xray เสร็จ
+
+    if (order > 0 && report >= order) totals.labDone++;
+    if (xrayOrder && xrayReport) totals.xrayDone++;
+    if (nurseDone) totals.nurseDone++;
+    if (doctorDone) totals.doctorDone++;
+
+    const slot = (r.qs_slot != null && r.qs_slot !== '')
+      ? escHtml(String(r.qs_slot)) : '<span class="num-zero">-</span>';
+    const room = r.room_name
+      ? `<span class="badge room">${escHtml(r.room_name)}</span>` : '<span class="num-zero">-</span>';
+
+    // แถวไฮไลต์ส้ม = มีสั่ง Lab แต่ผลยังไม่ครบ
+    const isPending = (order > 0 && report < order);
+    const rowClass = isPending ? 'row-pending' : '';
+    // ช่องที่เพิ่งเปลี่ยนเป็น "เสร็จ" ตั้งแต่รีเฟรชก่อน -> วาบเขียว
+    const fl = (col) => flashCells.has(`${r.vn}:${col}`) ? ' flash-new' : '';
+
+    const qn = (r.qn != null && r.qn !== '' && Number(r.qn) > 0)
+      ? `<span class="pt-qn">QN ${escHtml(String(r.qn))}</span>` : '';
+
+    return `<tr class="${rowClass}" data-hn="${escHtml(String(r.hn || ''))}" onclick="openDetail(filteredData[${i}])">
+      <td class="num">${i + 1}</td>
+      <td class="num slot-cell">${slot}</td>
+      <td class="pt-cell">
+        <div class="pt-hn"><span class="ptl">HN</span> ${escHtml(r.hn || '')}${qn}</div>
+        <div class="pt-name">${escHtml(r.pt_name || '-')}</div>
+      </td>
+      <td>${room}</td>
+      <td class="center${fl('lab')}">${labStatusCell(order, receive, report, labElapsed, labTotal)}</td>
+      <td class="center${fl('xray')}">${xrayStatusCell(xrayOrder, xrayReport, xrayElapsed, xrayTotal)}</td>
+      <td class="center${fl('nurse')}">${doneCell(nurseDone, 'ซักแล้ว', 'รอซัก', elapsed, SLA_MIN.nurse)}</td>
+      <td class="center${fl('doctor')}">${doneCell(doctorDone, 'ตรวจแล้ว', 'รอตรวจ', elapsed, SLA_MIN.doctor)}</td>
+      <td class="items-td">${itemsCell(r.items)}</td>
+      <td>${r.pttype_name ? `<span class="badge pttype">${escHtml(r.pttype_name)}</span>` : '<span class="num-zero">-</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th class="num" style="width:44px;">#</th>
+          <th class="num" style="width:64px;">Slot</th>
+          <th style="width:230px;">HN / ชื่อ-สกุล</th>
+          <th style="width:150px;">ห้องตรวจ</th>
+          <th class="center">LAB</th>
+          <th class="center">XRAY</th>
+          <th class="center">Nurse</th>
+          <th class="center">Doctor</th>
+          <th style="width:250px;">รายการ (Lab/X-ray)</th>
+          <th>สิทธิการรักษา</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="text-align:right;">รวม ${data.length.toLocaleString()} Visit</td>
+          <td class="center">เสร็จ ${totals.labDone.toLocaleString()}</td>
+          <td class="center">เสร็จ ${totals.xrayDone.toLocaleString()}</td>
+          <td class="center">เสร็จ ${totals.nurseDone.toLocaleString()}</td>
+          <td class="center">เสร็จ ${totals.doctorDone.toLocaleString()}</td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
+function renderSummary(data) {
+  const total = data.length;
+  let nurseDone = 0, doctorDone = 0;
+  let labWith = 0, labDone = 0, xrayWith = 0, xrayDone = 0;
+  // คอขวดต่อห้อง: นับที่ค้างแต่ละขั้น
+  const rooms = new Map();
+  const bump = (room, key) => {
+    if (!room) return;
+    const o = rooms.get(room) || { nurse: 0, doctor: 0, lab: 0, xray: 0, total: 0 };
+    o[key]++; o.total++; rooms.set(room, o);
+  };
+
+  data.forEach(r => {
+    if (Number(r.nurse_done || 0) > 0) nurseDone++;
+    if (Number(r.doctor_done || 0) > 0) doctorDone++;
+    const o = Number(r.cc_order || 0), rep = Number(r.cc_report || 0);
+    if (o > 0) { labWith++; if (rep >= o) labDone++; }
+    if (Number(r.xray_order || 0) > 0) { xrayWith++; if (Number(r.xray_report || 0) > 0) xrayDone++; }
+
+    const p = rowPending(r), room = r.room_name || '';
+    if (p.nurse) bump(room, 'nurse');
+    if (p.doctor) bump(room, 'doctor');
+    if (p.lab) bump(room, 'lab');
+    if (p.xray) bump(room, 'xray');
+  });
+
+  const pct = (n, d) => d > 0 ? `${(n / d * 100).toFixed(0)}%` : '-';
+  document.getElementById('sumPatient').textContent = total.toLocaleString();
+  document.getElementById('sumNurse').textContent = nurseDone.toLocaleString();
+  document.getElementById('sumNurseSub').textContent = `${pct(nurseDone, total)} · รอ ${(total - nurseDone).toLocaleString()}`;
+  document.getElementById('sumDoctor').textContent = doctorDone.toLocaleString();
+  document.getElementById('sumDoctorSub').textContent = `${pct(doctorDone, total)} · รอ ${(total - doctorDone).toLocaleString()}`;
+  document.getElementById('sumLab').textContent = `${labDone.toLocaleString()}/${labWith.toLocaleString()}`;
+  document.getElementById('sumLabSub').textContent = labWith > 0 ? `${pct(labDone, labWith)} · รอ ${(labWith - labDone).toLocaleString()}` : 'ไม่มีสั่ง Lab';
+  document.getElementById('sumXray').textContent = `${xrayDone.toLocaleString()}/${xrayWith.toLocaleString()}`;
+  document.getElementById('sumXraySub').textContent = xrayWith > 0 ? `${pct(xrayDone, xrayWith)} · รอ ${(xrayWith - xrayDone).toLocaleString()}` : 'ไม่มีสั่ง X-ray';
+
+  renderBottleneck(rooms);
+}
+
+function toggleBottleneck() {
+  bottleneckCollapsed = !bottleneckCollapsed;
+  document.getElementById('bottleneckBar').classList.toggle('collapsed', bottleneckCollapsed);
+  setCookie(BOTTLENECK_COOKIE, bottleneckCollapsed ? '1' : '0', 30);
+}
+
+function renderBottleneck(rooms) {
+  const bar = document.getElementById('bottleneckBar');
+  const list = document.getElementById('bottleneckList');
+  const arr = [...rooms.entries()]
+    .map(([room, c]) => ({ room, ...c }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8);
+  if (arr.length === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  bar.classList.toggle('collapsed', bottleneckCollapsed);   // คงสถานะพับไว้ตอน re-render
+  document.getElementById('bottleneckCount').textContent = `(${arr.length} ห้อง)`;
+  list.innerHTML = arr.map(r => {
+    const parts = [];
+    if (r.nurse) parts.push(`<span class="bn-k">รอซัก ${r.nurse}</span>`);
+    if (r.doctor) parts.push(`<span class="bn-k">รอตรวจ ${r.doctor}</span>`);
+    if (r.lab) parts.push(`<span class="bn-k">รอผล Lab ${r.lab}</span>`);
+    if (r.xray) parts.push(`<span class="bn-k">รอผล X-ray ${r.xray}</span>`);
+    return `<div class="bn-chip"><span class="bn-room">${escHtml(r.room)}</span>${parts.join('')}</div>`;
+  }).join('');
+}
+
+// ====== Export ======
+function exportCsv() {
+  if (!filteredData || filteredData.length === 0) {
+    showToast('err', 'ไม่มีข้อมูลให้ Export');
+    return;
+  }
+  const headers = ['Slot','HN','QN','ชื่อ-สกุล','ห้องตรวจ','LAB','XRAY','Nurse','Doctor','รายการ (Lab/X-ray)','สิทธิการรักษา'];
+  const lines = [headers.join(',')];
+  filteredData.forEach(r => {
+    const order = Number(r.cc_order || 0);
+    const receive = Number(r.cc_receive || 0);
+    const report = Number(r.cc_report || 0);
+
+    let labStatus;
+    if (order === 0) labStatus = 'ไม่มีสั่ง';
+    else if (report >= order) labStatus = `ผลครบ ${report}/${order}`;
+    else if (report > 0) labStatus = `รอผล ${report}/${order}`;
+    else if (receive > 0) labStatus = `รับแล้ว ${receive}/${order}`;
+    else labStatus = `รอรับ 0/${order}`;
+
+    const xrayStatus = !(Number(r.xray_order || 0) > 0) ? 'ไม่มีสั่ง'
+      : (Number(r.xray_report || 0) > 0 ? 'ผล X-ray แล้ว' : 'รอผล X-ray');
+    const nurseStatus = Number(r.nurse_done || 0) > 0 ? 'ซักแล้ว' : 'รอซัก';
+    const doctorStatus = Number(r.doctor_done || 0) > 0 ? 'ตรวจแล้ว' : 'รอตรวจ';
+    const itemsStr = (r.items || []).map(it =>
+      `${it.kind === 'XRAY' ? '[X]' : ''}${it.name || it.code}(${it.reported ? 'มีผล' : 'รอผล'})`).join('; ');
+
+    const cols = [
+      r.qs_slot != null ? r.qs_slot : '',
+      r.hn || '',
+      (r.qn != null && Number(r.qn) > 0) ? r.qn : '',
+      r.pt_name || '',
+      r.room_name || '',
+      labStatus,
+      xrayStatus,
+      nurseStatus,
+      doctorStatus,
+      itemsStr,
+      r.pttype_name || ''
+    ].map(v => {
+      const s = String(v);
+      return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g,'""')}"` : s;
+    });
+    lines.push(cols.join(','));
+  });
+
+  const bom = '﻿';
+  const blob = new Blob([bom + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lab-status-${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('ok', `Export ${filteredData.length} แถว`);
+}
+
+// ====== Advanced ======
+function toggleAdvanced() {
+  document.getElementById('advancedBox').classList.toggle('open');
+}
+function resetSql() {
+  document.getElementById('sqlSource').value = DEFAULT_SQL;
+  showToast('info', 'รีเซ็ต SQL แล้ว');
+}
+function clearCustomOrders() {
+  document.getElementById('customOrders').value = '';
+  showToast('info', 'ล้าง Custom Order Numbers');
+}
+function loadSampleOrders() {
+  document.getElementById('customOrders').value = SAMPLE_ORDERS;
+  showToast('info', `โหลดตัวอย่าง ${SAMPLE_ORDERS.split(',').length} รายการ`);
+}
+
+// ====== Sample order list (from spec) ======
+const SAMPLE_ORDERS = `10012927,10012386,10012394,10012519,10012570,10012410,10012342,10012344,10012324,10012325,10012382,10012341,10012679,10012384,10012822,10012332,10012316,10012317,10012318,10012319,10012320,10012321,10012322,10012336,10012333,10012337,10012331,10012374,10012375,10012396,10012347,10012348,10012349,10012350,10012351,10012353,10012354,10012356,10012357,10012358,10012362,10012364,10012367,10012369,10012376,10012371,10012372,10012373,10012335,10012379,10012383,10012392,10012393,10012385,10012390,10012391,10012406,10012412,10012420,10012421,10012425,10012431,10012451,10012395,10012407,10012360,10012435,10012440,10012397,10012398,10012403,10012405,10012429,10012430,10012432,10012361,10012399,10012400,10012401,10012404,10012408,10012355,10012413,10012416,10012417,10012418,10012419,10012422,10012423,10012424,10012428,10012434,10012439,10012363,10012452,10012460,10012461,10012465,10012409,10012414,10012415,10012365,10012370,10012326,10012327,10012330,10012427,10012475,10012437,10012462,10012442,10012443,10012445,10012464,10012448,10012450,10012456,10012457,10012458,10012467,10012468,10012469,10012471,10012474,10012477,10012476,10012479,10012489,10012518,10012483,10012481,10012482,10012484,10012511,10012504,10012486,10012523,10012487,10012488,10012492,10012493,10012498,10012499,10012505,10012506,10012507,10012501,10012490,10012491,10012495,10012496,10012497,10012530,10012494,10012500,10012502,10012514,10012531,10012516,10012529,10012532,10012538,10012503,10012508,10012525,10012526,10012509,10012527,10012510,10012513,10012512,10012515,10012517,10012520,10012521,10012522,10012573,10012455,10012534,10012535,10012539,10012540,10012542,10012366,10012544,10012546,10012554,10012545,10012556,10012334,10012550,10012551,10012552,10012378,10012553,10012381,10012557,10012388,10012340,10012558,10012352,10012463,10012559,10012411,10012528,10012561,10012562,10012563,10012564,10012565,10012566,10012478,10012567,10012576,10012598,10012611,10012612,10012613,10012614,10012569,10012568,10012473,10012571,10012583,10012547,10012549,10012572,10012578,10012574,10012575,10012594,10012543,10012536,10012537,10012580,10012433,10012585,10012588,10012616,10012622,10012589,10012590,10012593,10012595,10012470,10012596,10012601,10012599,10012615,10012485,10012345,10012629,10012603,10012618,10012604,10012605,10012607,10012608,10012610,10012609,10012647,10012625,10012626,10012628,10012635,10012426,10012636,10012368,10012638,10012640,10012723,10012642,10012359,10012644,10012657,10012641,10012645,10012646,10012600,10012648,10012658,10012654,10012655,10012656,10012533,10012661,10012665,10012724,10012617,10012591,10012592,10012667,10012666,10012377,10012693,10012387,10012746,10012669,10012668,10012785,10012728,10012670,10012672,10012673,10012671,10012674,10012675,10012678,10012680,10012681,10012683,10012738,10012684,10012686,10012687,10012685,10012380,10012707,10012708,10012709,10012722,10012664,10012584,10012630,10012790,10012689,10012660,10012343,10012441,10012692,10012694,10012696,10012582,10012438,10012555,10012704,10012480,10012339,10012631,10012721,10012346,10012700,10012706,10012702,10012824,10012766,10012710,10012730,10012712,10012732,10012713,10012449,10012716,10012717,10012733,10012734,10012705,10012718,10012719,10012720,10012338,10012726,10012727,10012729,10012795,10012736,10012767,10012697,10012763,10012735,10012690,10012764,10012691,10012742,10012741,10012743,10012749,10012750,10012773,10012663,10012747,10012754,10012753,10012755,10012632,10012695,10012756,10012662,10012799,10012760,10012759,10012765,10012768,10012771,10012770,10012769,10012836,10012788,10012772,10012775,10012776,10012777,10012779,10012780,10012781,10012783,10012782,10012541,10012786,10012787,10012792,10012794,10012797,10012802,10012806,10012861,10012868,10012703,10012789,10012793,10012819,10012796,10012389,10012810,10012402,10012798,10012758,10012800,10012801,10012744,10012807,10012805,10012808,10012809,10012597,10012774,10012815,10012577,10012813,10012814,10012436,10012820,10012821,10012633,10012581,10012579,10012803,10012825,10012811,10012827,10012843,10012826,10012828,10012829,10012830,10012857,10012831,10012832,10012659,10012833,10012834,10012835,10012878,10012838,10012896,10012643,10012895,10012839,10012837,10012840,10012812,10012844,10012845,10012841,10012846,10012847,10012778,10012851,10012852,10012853,10012856,10012858,10012699,10012871,10012881,10012883,10012862,10012863,10012864,10012865,10012866,10012737,10012867,10012823,10012761,10012869,10012910,10012873,10012874,10012876,10012701,10012882,10012884,10012885,10012886,10012887,10012804,10012818,10012817,10012740,10012889,10012890,10012891,10012892,10012751,10012752,10012893,10012872,10012894,10012904,10012898,10012900,10012901,10012524,10012902,10012903,10012909,10012905,10012931,10012913,10012911,10012914,10012916,10012915,10012918,10012917,10012920,10012922,10012939,10012897,10012924,10012925,10012926,10012929,10012930,10012932,10012983,10012935,10012977,10012990,10012936,10012908,10012907,10012942,10012949,10012950,10012944,10012945,10012762,10012947,10012948,10012953,10012958,10012937,10012959,10012961,10012964,10012965,10012966,10012978,10012981,10012980,10012982,10012963,10012968,10012969,10012970,10012973,10012974,10012933,10012975,10012976,10012941,10012979,10013006,10012985,10012988,10012989,10012993,10012994,10012991,10012992,10012995,10012946,10012999,10013000,10013001,10012986,10012987,10012928,10012955,10012956,10013003,10013008,10013009,10013010,10013004,10013007,10013012,10013011,10012962,10013016,10013024,10013014,10013017,10013019,10013020,10013028,10013015,10013030,10012997,10012971,10012972,10012967,10013027,10013031,10013035,10012952,10013033,10013036,10013037,10013034,10013039,10012619,10012620,10012621,10013041,10013042,10013055,10013044,10013045,10013046,10013056,10013058,10013072,10013048,10013051,10013052,10013054,10013013,10013038,10013040,10012586,10012688,10012587,10013059,10013067,10013060,10013061,10013062,10012998,10013063,10013064,10013065,10013066,10013068,10013049,10013070,10013071,10013073`;
+
+// ====== Init ======
+(function init() {
+  // Default date = today
+  const d = todayStr();
+  document.getElementById('filterStart').value = d;
+  document.getElementById('filterEnd').value = d;
+
+  // Load SQL into editor
+  document.getElementById('sqlSource').value = DEFAULT_SQL;
+
+  // Restore auto-refresh preference
+  const savedAuto = getCookie(AUTO_COOKIE);
+  if (savedAuto !== null && savedAuto !== '') {
+    const sel = document.getElementById('autoRefresh');
+    if ([...sel.options].some(o => o.value === savedAuto)) sel.value = savedAuto;
+  }
+
+  // Restore สถานะพับ "คอขวดต่อห้อง"
+  if (getCookie(BOTTLENECK_COOKIE) === '1') {
+    bottleneckCollapsed = true;
+    document.getElementById('bottleneckBar').classList.add('collapsed');
+  }
+
+  // Restore การตั้งค่าแจ้งเตือน
+  notifSoundOn = getCookie(NOTIF_SOUND_COOKIE) !== '0';   // ค่าเริ่มต้น = เปิด
+  document.getElementById('notifSound').checked = notifSoundOn;
+  notifDesktopOn = getCookie(NOTIF_DESKTOP_COOKIE) === '1'
+    && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  document.getElementById('notifDesktop').checked = notifDesktopOn;
+
+  // Auto-load session from URL or cookie
+  const urlSid = new URLSearchParams(location.search).get(URL_PARAM);
+  const cookieSid = getCookie(SESSION_COOKIE);
+  const sid = urlSid || cookieSid;
+  if (sid) {
+    document.getElementById('sessionId').value = sid;
+    if (urlSid) {
+      const u = new URL(location.href);
+      u.searchParams.delete(URL_PARAM);
+      history.replaceState({}, '', u.toString());
+    }
+    handleConnect();
+  } else {
+    // No session yet - prompt user to set it via settings modal
+    setTimeout(openSettings, 200);
+  }
+})();
+</script>
+
+</body>
+</html>
